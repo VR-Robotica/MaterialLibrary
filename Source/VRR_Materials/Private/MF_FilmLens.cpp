@@ -26,12 +26,14 @@ int32 UMaterialExpressionVrrFilmLens::Compile(FMaterialCompiler* Compiler, int32
 	const int32 Size = ViewSize(Compiler);
 
 	// Unconnected and zero: skip that effect entirely
-	const bool bChromatic = ChromaticAberrationIn.GetTracedInput().Expression || ChromaticAberration > 0.0f;
+	const bool bRadial = ChromaticAberrationIn.GetTracedInput().Expression || ChromaticAberration > 0.0f;
+	const bool bShift = ChannelShift.GetTracedInput().Expression != nullptr;
+	const bool bChromatic = bRadial || bShift;
 	const bool bSoft = SoftnessIn.GetTracedInput().Expression || Softness > 0.0f;
 
 	// Chromatic offset: along the direction from the center, r = 0 at the center, 1 in the corners (aspect-corrected)
-	int32 ChromaticOffset = INDEX_NONE;
-	if (bChromatic)
+	int32 ChromaticOffset = Compiler->Constant2(0.0f, 0.0f);
+	if (bRadial)
 	{
 		const int32 FromCenter = Compiler->Sub(BaseUV, Compiler->Constant2(0.5f, 0.5f));
 		const int32 Aspect = Compiler->AppendVector(Compiler->Div(X(Compiler, Size), Y(Compiler, Size)), Compiler->Constant(1.0f));
@@ -40,6 +42,12 @@ int32 UMaterialExpressionVrrFilmLens::Compile(FMaterialCompiler* Compiler, int32
 		const int32 Amount = InputOr(Compiler, ChromaticAberrationIn, ChromaticAberration);
 		const int32 Strength = Compiler->Power(Compiler->Max(R, Compiler->Constant(0.0001f)), Compiler->Constant(ChromaticFalloff));
 		ChromaticOffset = Compiler->Mul(Compiler->Mul(FromCenter, Compiler->Constant(2.0f)), Compiler->Mul(Amount, Strength));
+	}
+	if (bShift)
+	{
+		const int32 ShiftPx = Compiler->ValidCast(ChannelShift.Compile(Compiler), MCT_Float1);
+		const int32 ShiftUV = Compiler->Mul(ShiftPx, X(Compiler, PixelAt1080(Compiler)));
+		ChromaticOffset = Compiler->Add(ChromaticOffset, Compiler->AppendVector(ShiftUV, Compiler->Constant(0.0f)));
 	}
 
 	// One tap: RGB at UV, or R pushed out, G in place, B pulled in

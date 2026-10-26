@@ -43,6 +43,18 @@ public:
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Static' if not specified"))
 	FExpressionInput StaticIn;
 
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Dropouts' if not specified"))
+	FExpressionInput DropoutsIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Glitch Dropouts' if not specified"))
+	FExpressionInput GlitchDropoutsIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Dropout Intensity' if not specified"))
+	FExpressionInput DropoutIntensityIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Dropout Length' if not specified"))
+	FExpressionInput DropoutLengthIn;
+
 	/** 0 = Color's own color, 1 = fully smeared tape color. */
 	UPROPERTY(EditAnywhere, Category = "Tape Signal|Chroma", meta = (OverridingInputProperty = "ChromaBleedIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float ChromaBleed = 0.8f;
@@ -79,13 +91,21 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Tape Signal|Noise", meta = (ClampMin = "0.0", UIMax = "1.0"))
 	float GlitchStatic = 0.35f;
 
-	/** Chance per line per frame of a white dropout streak. Glitch bands raise it. 0 = none. */
-	UPROPERTY(EditAnywhere, Category = "Tape Signal|Noise", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	/** Chance per line per frame of a white dropout streak. 0 = none outside glitch bands. */
+	UPROPERTY(EditAnywhere, Category = "Tape Signal|Dropouts", meta = (OverridingInputProperty = "DropoutsIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float Dropouts = 0.004f;
 
-	/** Brightness added along a dropout streak. */
-	UPROPERTY(EditAnywhere, Category = "Tape Signal|Noise", meta = (ClampMin = "0.0", UIMax = "2.0"))
+	/** Extra chance per line per frame inside glitch bands. 0 = glitches add no streaks. */
+	UPROPERTY(EditAnywhere, Category = "Tape Signal|Dropouts", meta = (OverridingInputProperty = "GlitchDropoutsIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float GlitchDropouts = 0.3f;
+
+	/** Brightness added along a dropout streak. 0 = no streaks. */
+	UPROPERTY(EditAnywhere, Category = "Tape Signal|Dropouts", meta = (OverridingInputProperty = "DropoutIntensityIn", ClampMin = "0.0", UIMax = "2.0"))
 	float DropoutIntensity = 0.6f;
+
+	/** Longest streak, as a fraction of the screen width (each streak is 20-100% of this). */
+	UPROPERTY(EditAnywhere, Category = "Tape Signal|Dropouts", meta = (OverridingInputProperty = "DropoutLengthIn", ClampMin = "0.01", UIMax = "1.0"))
+	float DropoutLength = 0.3f;
 
 	/** Noise patterns per second (30 for NTSC video). */
 	UPROPERTY(EditAnywhere, Category = "Tape Signal|Noise", meta = (ClampMin = "1.0", UIMax = "60.0"))

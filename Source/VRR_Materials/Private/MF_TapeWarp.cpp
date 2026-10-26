@@ -15,6 +15,7 @@ UMaterialExpressionVrrTapeWarp::UMaterialExpressionVrrTapeWarp(const FObjectInit
 	Outputs.Reset();
 	Outputs.Add(FExpressionOutput(TEXT("UV")));
 	Outputs.Add(FExpressionOutput(TEXT("Glitch")));
+	Outputs.Add(FExpressionOutput(TEXT("Color Split")));
 #endif
 }
 
@@ -47,6 +48,12 @@ int32 UMaterialExpressionVrrTapeWarp::Compile(FMaterialCompiler* Compiler, int32
 	if (OutputIndex == 1)
 	{
 		return Glitch;
+	}
+	if (OutputIndex == 2)
+	{
+		// Signed shift in 1080p pixels: a sine running down the lines, at full size in the band's middle
+		const int32 Phase = Compiler->Mul(Compiler->Sub(Compiler->Mul(V, Compiler->Constant(ColorSplitWaves)), Compiler->Mul(Time, Compiler->Constant(ColorSplitSpeed))), Compiler->Constant(UE_TWO_PI));
+		return Compiler->Mul(Compiler->Mul(Compiler->Sine(Phase), InputOr(Compiler, ColorSplitIn, ColorSplit)), Glitch);
 	}
 
 	// Sideways offset in 1080p pixels: jitter + wobble + glitch tear + head switching

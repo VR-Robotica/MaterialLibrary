@@ -13,6 +13,8 @@
  *  - Wobble:         a slow horizontal wave rolling down the picture.
  *  - Glitch bands:   in random moments (Glitch Chance per Glitch Rate window), a band rolls down the screen
  *                    and tears its lines sideways. The Glitch output is that band's 0-1 mask.
+ *  - Color split:    inside the band, red and blue drift apart in a wave that runs down the lines. The Color Split
+ *                    output is that shift in pixels at 1080p: feed it to Vrr Film Lens's Channel Shift.
  *  - Head switching: the bottom lines bend sideways, like the head-switch noise at the bottom of a VHS frame.
  */
 UCLASS(collapsecategories, hidecategories=Object)
@@ -37,6 +39,9 @@ public:
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Head Switch Shift' if not specified"))
 	FExpressionInput HeadSwitchShiftIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Color Split' if not specified"))
+	FExpressionInput ColorSplitIn;
 
 	/** Scanlines in the picture: jitter and tearing move whole lines this tall. NTSC VHS is about 240 per field. */
 	UPROPERTY(EditAnywhere, Category = "Tape Warp", meta = (ClampMin = "16", UIMax = "1080"))
@@ -85,6 +90,18 @@ public:
 	/** Largest sideways tear inside the band, in pixels at 1080p. */
 	UPROPERTY(EditAnywhere, Category = "Tape Warp|Glitch", meta = (OverridingInputProperty = "GlitchStrengthIn", ClampMin = "0.0", UIMax = "120.0"))
 	float GlitchStrength = 24.0f;
+
+	/** Largest red/blue split inside the band, in pixels at 1080p (each channel moves this far, in opposite directions). 0 = off. */
+	UPROPERTY(EditAnywhere, Category = "Tape Warp|Color Split", meta = (OverridingInputProperty = "ColorSplitIn", ClampMin = "0.0", UIMax = "32.0"))
+	float ColorSplit = 6.0f;
+
+	/** Waves of the split over the screen height (the band shows a few of them). */
+	UPROPERTY(EditAnywhere, Category = "Tape Warp|Color Split", meta = (ClampMin = "0.0", UIMax = "200.0"))
+	float ColorSplitWaves = 40.0f;
+
+	/** How fast the wave runs down the band, in waves per second. Negative runs it up. */
+	UPROPERTY(EditAnywhere, Category = "Tape Warp|Color Split", meta = (UIMin = "-10.0", UIMax = "10.0"))
+	float ColorSplitSpeed = 3.0f;
 
 	/** Height of the head-switching strip at the bottom, as a fraction of the screen. 0 = off. */
 	UPROPERTY(EditAnywhere, Category = "Tape Warp|Head Switching", meta = (ClampMin = "0.0", ClampMax = "0.2"))

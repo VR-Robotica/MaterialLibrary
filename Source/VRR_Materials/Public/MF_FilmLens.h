@@ -9,6 +9,8 @@
  *
  *  - Chromatic aberration: red is sampled pushed outward from the screen center and blue pulled inward,
  *    growing toward the edges: offset = (UV - 0.5) * 2 * Amount * r^Falloff, where r is 0 at the center and 1 in the corners.
+ *  - Channel shift: an extra sideways push, red right and blue left by Channel Shift pixels at 1080p
+ *    (e.g. Vrr Tape Warp's Color Split, for the red/blue wave in glitch bands).
  *  - Softness: a small 5-tap blur (center + 4 diagonals at Softness pixels), like a slightly soft film lens.
  *
  * Output: the filtered scene color. Chain Vrr Halation (added) and Vrr Film Grain after it.
@@ -29,6 +31,9 @@ public:
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Softness' if not specified"))
 	FExpressionInput SoftnessIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Sideways red/blue split in pixels at 1080p (red right, blue left), e.g. Vrr Tape Warp's Color Split. None if not connected"))
+	FExpressionInput ChannelShift;
 
 	/** Color split in the screen corners, as a fraction of the screen (0.004 = 0.4%, about 4 pixels at 1080p). 0 = off. */
 	UPROPERTY(EditAnywhere, Category = "Film Lens", meta = (OverridingInputProperty = "ChromaticAberrationIn", ClampMin = "0.0", UIMax = "0.02"))

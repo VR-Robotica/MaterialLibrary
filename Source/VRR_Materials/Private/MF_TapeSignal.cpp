@@ -96,17 +96,20 @@ int32 UMaterialExpressionVrrTapeSignal::Compile(FMaterialCompiler* Compiler, int
 	}
 
 	// 4. Dropouts: on a few lines, a white streak from a random start that fades over its length
-	if (Dropouts > 0.0f || Glitch.GetTracedInput().Expression)
+	const bool bHasDropoutInputs = DropoutsIn.GetTracedInput().Expression || GlitchDropoutsIn.GetTracedInput().Expression || DropoutIntensityIn.GetTracedInput().Expression;
+	const bool bGlitchDropouts = Glitch.GetTracedInput().Expression && (GlitchDropouts > 0.0f || GlitchDropoutsIn.GetTracedInput().Expression);
+	if (bHasDropoutInputs || ((Dropouts > 0.0f || bGlitchDropouts) && DropoutIntensity > 0.0f))
 	{
 		const int32 Line = Compiler->Floor(Compiler->Mul(V, Compiler->Constant(ScanlineCount)));
-		const int32 Rate = Compiler->Add(Compiler->Constant(Dropouts), Compiler->Mul(GlitchArg, Compiler->Constant(0.3f)));
+		const int32 Rate = Compiler->Add(InputOr(Compiler, DropoutsIn, Dropouts), Compiler->Mul(GlitchArg, InputOr(Compiler, GlitchDropoutsIn, GlitchDropouts)));
 		const int32 On = Compiler->Step(Hash2(Compiler, Line, Seed, 3.1f), Rate);
 		const int32 Start = Hash2(Compiler, Line, Seed, 8.7f);
-		const int32 Length = Compiler->Add(Compiler->Constant(0.05f), Compiler->Mul(Hash2(Compiler, Line, Seed, 1.9f), Compiler->Constant(0.25f)));
+		const int32 MaxLength = Compiler->Max(InputOr(Compiler, DropoutLengthIn, DropoutLength), Compiler->Constant(0.01f));
+		const int32 Length = Compiler->Mul(MaxLength, Compiler->Add(Compiler->Constant(0.2f), Compiler->Mul(Hash2(Compiler, Line, Seed, 1.9f), Compiler->Constant(0.8f))));
 		const int32 Along = Compiler->Div(Compiler->Sub(X(Compiler, BaseUV), Start), Length);
 		const int32 Inside = Compiler->Mul(Compiler->Step(Compiler->Constant(0.0f), Along), Compiler->Step(Along, One));
 		const int32 Streak = Compiler->Mul(Compiler->Mul(On, Inside), Compiler->Sub(One, Compiler->Saturate(Along)));
-		Result = Compiler->Add(Result, Compiler->Mul(Streak, Compiler->Constant(DropoutIntensity)));
+		Result = Compiler->Add(Result, Compiler->Mul(Streak, InputOr(Compiler, DropoutIntensityIn, DropoutIntensity)));
 	}
 
 	return Compiler->Max(Result, Compiler->Constant(0.0f));

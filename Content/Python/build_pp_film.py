@@ -2,12 +2,17 @@
 Builds /VRR_Materials/PostProcess/M_PP_Film (post process, after tonemapping) and MI_PP_Film from the VRR nodes:
 
     UV       = UseVideoTape ? Vrr Tape Warp.UV : ViewportUV           (shared by every node that reads the scene)
-    Picture  = Vrr Film Lens(UV)
+    Picture  = Vrr Film Lens(UV, Channel Shift = Lens - ChannelShift + (UseVideoTape ? Vrr Tape Warp.Color Split : 0))
+    Picture  = UseComicShade ? Vrr Comic Shade(Picture, UV) : Picture   (hatching + halftone dots)
     Picture  = UseVideoTape ? Vrr Tape Signal(Picture, UV, Glitch) : Picture
     Emissive = Vrr Film Grain( Picture + Vrr Halation(UV) )
 
 Halation is added after the tape signal so its warm tint isn't replaced by the tape's smeared color.
 Every node setting that matters is wired to a parameter, so MI_PP_Film can be tuned live.
+Parameter names match the hand-edited graph ("Lens - ...", "Comic - ...", "Tape - ..."). Comic Shade's Tone input
+is left unconnected so it uses the picture's luminance (a constant Tone turns the patterns off everywhere).
+Note: the rebuild wires nodes directly. Named reroutes and hand layout are not recreated (Python cannot set a
+reroute usage's declaration).
 Run from the editor's Python console (or Tools > Execute Python Script). Safe to re-run: it rebuilds the graph,
 and MI_PP_Film keeps its overrides as long as the parameter names stay the same.
 """
@@ -16,6 +21,9 @@ import unreal
 FOLDER = "/VRR_Materials/PostProcess"
 MATERIAL_NAME = "M_PP_Film"
 INSTANCE_NAME = "MI_PP_Film"
+# Comic Shade dot style: HIGHLIGHTS (light dots on bright areas), PRINT (classic print ink dots, bigger the darker)
+# or LIT_FALLOFF (Hi-Fi Rush: dots between shadow and highlight level, sized by brightness)
+DOT_STYLE = "HIGHLIGHTS"
 
 assets = unreal.AssetToolsHelpers.get_asset_tools()
 mel = unreal.MaterialEditingLibrary
@@ -38,11 +46,13 @@ def node(expression_class, x, y):
     return mel.create_material_expression(material, expression_class, x, y)
 
 
-def scalar(name, value, group, x, y):
+def scalar(name, value, group, x, y, slider_max=None):
     param = node(unreal.MaterialExpressionScalarParameter, x, y)
     param.set_editor_property("parameter_name", name)
     param.set_editor_property("default_value", value)
     param.set_editor_property("group", group)
+    if slider_max is not None:
+        param.set_editor_property("slider_max", slider_max)
     return param
 
 
@@ -74,6 +84,7 @@ connect(scalar("TapeLineJitter", 0.6, "Video Tape", -1900, -800), "", warp, "Lin
 connect(scalar("TapeGlitchChance", 0.25, "Video Tape", -1900, -700), "", warp, "GlitchChanceIn")
 connect(scalar("TapeGlitchStrength", 24.0, "Video Tape", -1900, -600), "", warp, "GlitchStrengthIn")
 connect(scalar("TapeHeadSwitch", 12.0, "Video Tape", -1900, -500), "", warp, "HeadSwitchShiftIn")
+connect(scalar("Tape - Color Split", 6.0, "Video Tape", -1900, -400), "", warp, "ColorSplitIn")
 
 screen = node(unreal.MaterialExpressionScreenPosition, -1500, -450)
 uv_switch = tape_switch(-1200, -600)
@@ -83,26 +94,60 @@ connect(screen, "ViewportUV", uv_switch, "False")
 # Lens: chromatic aberration + softness
 lens = node(unreal.MaterialExpressionVrrFilmLens, -800, -300)
 connect(uv_switch, "", lens, "UV")
-connect(scalar("ChromaticAberration", 0.004, "Lens", -1200, -300), "", lens, "ChromaticAberrationIn")
-connect(scalar("Softness", 0.5, "Lens", -1200, -200), "", lens, "SoftnessIn")
+# Channel shift: a fixed shift, plus the red/blue wave inside glitch bands (only with the tape on)
+split_switch = tape_switch(-1200, -450)
+connect(warp, "Color Split", split_switch, "True")
+connect(node(unreal.MaterialExpressionConstant, -1400, -400), "", split_switch, "False")
+channel_shift = node(unreal.MaterialExpressionAdd, -1000, -450)
+connect(scalar("Lens - ChannelShift", 0.0, "Lens", -1200, -500), "", channel_shift, "A")
+connect(split_switch, "", channel_shift, "B")
+connect(channel_shift, "", lens, "ChannelShift")
+connect(scalar("Lens - ChromaticAberration", 0.004, "Lens", -1200, -300), "", lens, "ChromaticAberrationIn")
+connect(scalar("Lens - Softness", 0.5, "Lens", -1200, -200), "", lens, "SoftnessIn")
+
+# Comic shade: hatching on dark areas, halftone dots on bright areas
+comic = node(unreal.MaterialExpressionVrrComicShade, -650, 0)
+comic.set_editor_property("dot_style", getattr(unreal.VrrHalftoneStyle, DOT_STYLE))
+connect(lens, "Color", comic, "Color")
+connect(uv_switch, "", comic, "UV")
+connect(scalar("Comic - ShadowLevel", 0.3, "Comic", -1000, -100), "", comic, "ShadowLevelIn")
+connect(scalar("Comic - HighlightLevel", 0.7, "Comic", -1000, 0), "", comic, "HighlightLevelIn")
+connect(scalar("Comic - HatchSpacing", 6.0, "Comic", -1000, 100), "", comic, "HatchSpacingIn")
+connect(scalar("Comic - HatchOpacity", 0.5, "Comic", -1000, 200, slider_max=1.0), "", comic, "HatchOpacityIn")
+connect(vector("Comic - InkColor", unreal.LinearColor(0.05, 0.04, 0.12, 1.0), "Comic", -1000, 300), "", comic, "InkColorIn")
+connect(scalar("Comic - DotSpacing", 7.0, "Comic", -1000, 400), "", comic, "DotSpacingIn")
+connect(scalar("Comic - DotOpacity", 0.35, "Comic", -1000, 500, slider_max=1.0), "", comic, "DotOpacityIn")
+connect(vector("Comic - DotColor", unreal.LinearColor(1.0, 1.0, 1.0, 1.0), "Comic", -1000, 600), "", comic, "DotColorIn")
+
+comic_switch = node(unreal.MaterialExpressionStaticSwitchParameter, -400, 0)
+comic_switch.set_editor_property("parameter_name", "UseComicShade")
+comic_switch.set_editor_property("default_value", True)
+comic_switch.set_editor_property("group", "Comic")
+connect(comic, "Color", comic_switch, "True")
+connect(lens, "Color", comic_switch, "False")
 
 # Tape signal: chroma bleed, scanlines, static, dropouts
 signal = node(unreal.MaterialExpressionVrrTapeSignal, -500, -500)
-connect(lens, "Color", signal, "Color")
+connect(comic_switch, "", signal, "Color")
 connect(uv_switch, "", signal, "UV")
 connect(warp, "Glitch", signal, "Glitch")
-connect(scalar("TapeChromaBleed", 0.8, "Video Tape", -900, -800), "", signal, "ChromaBleedIn")
-connect(scalar("ScanlineIntensity", 0.25, "Video Tape", -900, -700), "", signal, "ScanlineIntensityIn")
-connect(scalar("TapeStatic", 0.03, "Video Tape", -900, -600), "", signal, "StaticIn")
+connect(scalar("Tape - ChromaBleed", 0.8, "Video Tape", -900, -800), "", signal, "ChromaBleedIn")
+connect(scalar("Tape - ScanlineIntensity", 0.25, "Video Tape", -900, -700), "", signal, "ScanlineIntensityIn")
+connect(scalar("Tape - Static", 0.03, "Video Tape", -900, -600), "", signal, "StaticIn")
+# White streaks: rate everywhere, extra rate inside glitch bands, brightness, longest streak (fraction of screen width)
+connect(scalar("Tape - Dropouts", 0.004, "Video Tape", -900, -1100), "", signal, "DropoutsIn")
+connect(scalar("Tape - GlitchDropouts", 0.3, "Video Tape", -900, -1000), "", signal, "GlitchDropoutsIn")
+connect(scalar("Tape - Dropout Intensity", 0.6, "Video Tape", -900, -900), "", signal, "DropoutIntensityIn")
+connect(scalar("Tape - Dropout Length", 0.6, "Video Tape", -900, -1200), "", signal, "DropoutLengthIn")
 
 picture_switch = tape_switch(-250, -350)
 connect(signal, "Color", picture_switch, "True")
-connect(lens, "Color", picture_switch, "False")
+connect(comic_switch, "", picture_switch, "False")
 
 # Halation: red halo around highlights
 halation = node(unreal.MaterialExpressionVrrHalation, -800, 100)
 connect(uv_switch, "", halation, "UV")
-connect(scalar("HalationThreshold", 0.7, "Halation", -1200, 0), "", halation, "ThresholdIn")
+connect(scalar("HalationThreshold", 0.88, "Halation", -1200, 0), "", halation, "ThresholdIn")
 connect(scalar("HalationRadius", 12.0, "Halation", -1200, 100), "", halation, "RadiusIn")
 connect(scalar("HalationIntensity", 0.6, "Halation", -1200, 200), "", halation, "IntensityIn")
 connect(vector("HalationTint", unreal.LinearColor(1.0, 0.25, 0.08, 1.0), "Halation", -1200, 300), "", halation, "TintIn")
