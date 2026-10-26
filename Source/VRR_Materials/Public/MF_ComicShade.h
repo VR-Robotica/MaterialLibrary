@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_ComicShade.generated.h"
 
 /** Where the comic patterns are anchored. */
@@ -48,7 +48,7 @@ enum class EVrrHalftoneStyle : uint8
  * World space rebuilds the surface normal from depth (Unlit toon materials don't write usable G-buffer normals).
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrComicShade : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrComicShade : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -169,6 +169,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

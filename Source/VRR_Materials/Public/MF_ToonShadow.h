@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_ToonShadow.generated.h"
 
 class UTexture;
@@ -19,7 +19,7 @@ class UTexture;
  *   ShadowForward = direction the capture looks, away from the light (xyz)
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrToonShadow : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrToonShadow : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -72,6 +72,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_TapeWarp.generated.h"
 
 /**
@@ -18,7 +18,7 @@
  *  - Head switching: the bottom lines bend sideways, like the head-switch noise at the bottom of a VHS frame.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrTapeWarp : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrTapeWarp : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -113,6 +113,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

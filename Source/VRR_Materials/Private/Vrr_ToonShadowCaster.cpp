@@ -1,3 +1,23 @@
+/*
+ * Toon shadow caster: renders the depth map that Vrr Toon Shadow reads, from the toon fake light.
+ *
+ * Strategy
+ *  Toon materials are Unlit, so engine shadow maps never reach them. Instead this actor runs a small depth-only
+ *  scene capture that looks along the fake light (read from MPC_ToonLighting), and publishes where that capture is
+ *  (origin, axes, width, resolution) back into the same collection. Vrr Toon Shadow then projects each pixel into
+ *  the map with those values and does the depth test itself.
+ *  The capture and the published values must always describe the same view, so the capture is triggered manually
+ *  right after the values are written, never on its own schedule.
+ *
+ * Per update
+ *  1. Point the capture along the light (Forward = -LightDirection) and build its Right / Up axes.
+ *  2. Center on the player (or this actor), snapped to whole texels so shadows don't shimmer as it moves.
+ *  3. Back the capture off toward the light by Capture Distance.
+ *  4. Write ShadowOrigin / Right / Up / Forward into the collection.
+ *  5. Render the capture (deferred in game, immediate in the editor).
+ *  When the actor goes away it sets the map width to 0, which Vrr Toon Shadow treats as "fully lit".
+ */
+
 #include "Vrr_ToonShadowCaster.h"
 
 #include "Components/SceneCaptureComponent2D.h"
@@ -8,6 +28,7 @@
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
 
+/** Parameter names in MPC_ToonLighting. Must match the collection and MF_ToonLit. */
 namespace ToonShadowParams
 {
 	static const FName LightDirection(TEXT("LightDirection"));
@@ -17,6 +38,7 @@ namespace ToonShadowParams
 	static const FName ShadowForward(TEXT("ShadowForward"));
 }
 
+/** Sets up a cheap, depth-only, orthographic capture that only renders when UpdateCapture asks it to. */
 AVrr_ToonShadowCaster::AVrr_ToonShadowCaster()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -60,6 +82,7 @@ AVrr_ToonShadowCaster::AVrr_ToonShadowCaster()
 	Flags.SetLumenReflections(false);
 }
 
+/** Runs when placed, moved or edited: pushes the editable settings onto the capture and refreshes it. */
 void AVrr_ToonShadowCaster::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
@@ -78,6 +101,7 @@ void AVrr_ToonShadowCaster::Tick(float DeltaSeconds)
 
 void AVrr_ToonShadowCaster::UpdateCapture()
 {
+	// Nothing to do until the collection and render target are set
 	UWorld* World = GetWorld();
 	if (!World || !LightingCollection || !ShadowTarget)
 	{
@@ -85,14 +109,15 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	}
 	Capture->TextureTarget = ShadowTarget;
 
-	// Capture looks along the light, away from it
+	// 1. Capture looks along the light, away from it. Right / Up are the map's U / V axes.
 	const FVector Forward = -GetLightDirection();
 	const FRotator Rotation = FRotationMatrix::MakeFromX(Forward).Rotator();
 	const FRotationMatrix Axes(Rotation);
 	const FVector Right = Axes.GetUnitAxis(EAxis::Y);
 	const FVector Up = Axes.GetUnitAxis(EAxis::Z);
 
-	// Snap the center to whole texels across the map so shadow edges don't shimmer while moving
+	// 2. Snap the center to whole texels across the map so shadow edges don't shimmer while moving
+	//    (only Right / Up are snapped; depth along Forward doesn't affect which texel a point lands in)
 	const float Resolution = FMath::Max(ShadowTarget->SizeX, 1);
 	const double TexelSize = ShadowArea / Resolution;
 	const FVector Center = GetShadowCenter();
@@ -101,11 +126,12 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	const double Depth = FVector::DotProduct(Center, Forward);
 	const FVector SnappedCenter = Right * SnappedRight + Up * SnappedUp + Forward * Depth;
 
+	// 3. Back off toward the light so everything that can cast a shadow is in front of the capture
 	const FVector CapturePosition = SnappedCenter - Forward * CaptureDistance;
 	Capture->OrthoWidth = ShadowArea;
 	Capture->SetWorldLocationAndRotation(CapturePosition, Rotation);
 
-	// Tell toon materials where the map is
+	// 4. Tell toon materials where the map is (layout documented on Vrr Toon Shadow)
 	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowOrigin,
 		FLinearColor(CapturePosition.X, CapturePosition.Y, CapturePosition.Z, ShadowArea));
 	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowRight,
@@ -115,7 +141,7 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowForward,
 		FLinearColor(Forward.X, Forward.Y, Forward.Z, 0.0f));
 
-	// In game, queue the capture with the main frame render (cheapest). In the editor the main view may not
+	// 5. In game, queue the capture with the main frame render (cheapest). In the editor the main view may not
 	// render (non-realtime viewports), so render it now to keep the map in sync with the values above.
 	if (World->IsGameWorld())
 	{
@@ -127,6 +153,7 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	}
 }
 
+/** In game (with Follow Player), the player's view target; otherwise this actor's location. */
 FVector AVrr_ToonShadowCaster::GetShadowCenter() const
 {
 	UWorld* World = GetWorld();
@@ -143,6 +170,7 @@ FVector AVrr_ToonShadowCaster::GetShadowCenter() const
 	return GetActorLocation();
 }
 
+/** LightDirection from the collection's instance in this world (normalized), or straight up if it can't be read. */
 FVector AVrr_ToonShadowCaster::GetLightDirection() const
 {
 	FLinearColor Value(0.0f, 0.0f, 1.0f);
@@ -157,6 +185,7 @@ FVector AVrr_ToonShadowCaster::GetLightDirection() const
 	return Direction.GetSafeNormal(UE_SMALL_NUMBER, FVector::UpVector);
 }
 
+/** Width 0 in ShadowOrigin.w tells Vrr Toon Shadow there is no map, so toon materials render fully lit. */
 void AVrr_ToonShadowCaster::DisableShadows()
 {
 	if (LightingCollection && GetWorld())

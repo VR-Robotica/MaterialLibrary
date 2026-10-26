@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_FilmGrain.generated.h"
 
 /**
@@ -15,7 +15,7 @@
  * Connect Frame (e.g. Vrr Stepped Time's Frame) to drive the steps yourself; otherwise it steps at Frame Rate.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrFilmGrain : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrFilmGrain : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -64,6 +64,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_SteppedTime.generated.h"
 
 /**
@@ -16,7 +16,7 @@
  * Phase (0-1 of a step, e.g. Per Instance Random) lets objects change frame at different moments.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrSteppedTime : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrSteppedTime : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -46,6 +46,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

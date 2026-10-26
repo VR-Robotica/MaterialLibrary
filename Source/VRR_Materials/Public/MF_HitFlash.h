@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_HitFlash.generated.h"
 
 /**
@@ -12,7 +12,7 @@
  *   Emissive = Color * Intensity * Alpha
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrHitFlash : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrHitFlash : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -46,6 +46,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

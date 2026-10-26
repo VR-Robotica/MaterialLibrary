@@ -1,48 +1,57 @@
+/*
+ * Vrr Stepped Time: time that advances in held steps (animation "on twos" / "on threes").
+ *
+ * Strategy
+ *  Count whole steps since time zero (Frame), then turn that back into seconds. Anything driven by the stepped
+ *  seconds holds still for a step and then jumps, while the game keeps rendering at full frame rate.
+ *  Phase shifts where the steps fall, so objects fed different phases (e.g. Per Instance Random) don't all jump on
+ *  the same frame.
+ *
+ * Outputs
+ *  0 Time   stepped seconds: (Frame - Phase) / FrameRate, never ahead of real time
+ *  1 Frame  whole step count: floor(Time * FrameRate + Phase)
+ *  2 Seed   0-1 random value that changes every step (for noise seeds)
+ */
+
 #include "MF_SteppedTime.h"
 
 #include "MaterialCompiler.h"
 #include "VrrMaterialMath.h"
 
-#define LOCTEXT_NAMESPACE "VrrMaterialExpressions"
+namespace VrrSteppedTime
+{
+	enum EOutput : int32 { Time = 0, Frame = 1, Seed = 2 };
+}
 
 UMaterialExpressionVrrSteppedTime::UMaterialExpressionVrrSteppedTime(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-#if WITH_EDITORONLY_DATA
-	MenuCategories.Add(LOCTEXT("VRR", "VRR"));
-
-	bShowOutputNameOnPin = true;
-	Outputs.Reset();
-	Outputs.Add(FExpressionOutput(TEXT("Time")));
-	Outputs.Add(FExpressionOutput(TEXT("Frame")));
-	Outputs.Add(FExpressionOutput(TEXT("Seed")));
-#endif
+	InitNode(TEXT("Vrr Stepped Time"), { TEXT("Time"), TEXT("Frame"), TEXT("Seed") });
 }
 
 #if WITH_EDITOR
 int32 UMaterialExpressionVrrSteppedTime::Compile(FMaterialCompiler* Compiler, int32 OutputIndex)
 {
-	const int32 Time = TimeIn.GetTracedInput().Expression ? TimeIn.Compile(Compiler)
-		: bIgnorePause ? Compiler->RealTime(false, 0.0f) : Compiler->GameTime(false, 0.0f);
-	const int32 Rate = Compiler->Max(VrrMaterialMath::InputOr(Compiler, FrameRateIn, FrameRate), Compiler->Constant(0.1f));
-	const int32 PhaseArg = VrrMaterialMath::InputOr(Compiler, PhaseIn, Phase);
+	using namespace VrrMaterialMath;
 
+	// 1. Source time: the Time pin, else game time (or real time with Ignore Pause)
+	const int32 Time = IsConnected(TimeIn) ? TimeIn.Compile(Compiler) : Seconds(Compiler, bIgnorePause);
+	const int32 Rate = Compiler->Max(InputOr(Compiler, FrameRateIn, FrameRate), Compiler->Constant(0.1f));
+	const int32 PhaseArg = InputOr(Compiler, PhaseIn, Phase);
+
+	// 2. Whole steps so far, shifted by Phase
 	const int32 Frame = Compiler->Floor(Compiler->Add(Compiler->Mul(Time, Rate), PhaseArg));
+
 	switch (OutputIndex)
 	{
-	case 1:
+	case VrrSteppedTime::Frame:
 		return Frame;
-	case 2:
-		return Compiler->Frac(Compiler->Mul(Frame, Compiler->Constant(0.6180339887f)));
+	case VrrSteppedTime::Seed:
+		// 3a. A new 0-1 value every step
+		return FrameRandom(Compiler, Frame);
 	default:
+		// 3b. Back to seconds: the start time of the current step
 		return Compiler->Div(Compiler->Sub(Frame, PhaseArg), Rate);
 	}
 }
-
-void UMaterialExpressionVrrSteppedTime::GetCaption(TArray<FString>& OutCaptions) const
-{
-	OutCaptions.Add(TEXT("Vrr Stepped Time"));
-}
 #endif
-
-#undef LOCTEXT_NAMESPACE

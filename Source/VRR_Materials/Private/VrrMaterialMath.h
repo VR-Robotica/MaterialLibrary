@@ -1,61 +1,134 @@
 #pragma once
 
+/*
+ * Shared shader-building helpers for the VRR material nodes.
+ *
+ * How the nodes build shaders
+ *  Every node is written with FMaterialCompiler ops (Add, Mul, Lerp...), not custom HLSL. Each op returns an int32
+ *  "code chunk" handle, and the compiler turns the chain into HLSL. That keeps the nodes working with every shading
+ *  path, lets constants fold away at compile time, and gives correct derivatives for free.
+ *
+ * What lives here
+ *  - Inputs:       IsConnected / InputOr / Float3Or / ColorOr, for the "use the pin if wired, else the property"
+ *                  pattern every node repeats (properties marked OverridingInputProperty).
+ *  - Components:   X / Y / Z / W / XYZ masks, so long ComponentMask calls stay readable.
+ *  - Math:         luminance, hashes and value noise (deterministic, no sine, stable at large coordinates).
+ *  - Time:         seconds (game or real), stepped frame numbers and per-frame random seeds.
+ *  - Post process: viewport UV, view size, "1080p pixel" units and clamped scene sampling.
+ *
+ * Post-process helpers sample PostProcessInput0 in viewport UV (0-1 over the view, not the whole buffer).
+ * Editor only: material expressions only compile in the editor.
+ */
+
 #include "CoreMinimal.h"
 #include "MaterialCompiler.h"
 #include "MaterialSceneTextureId.h"
 
 #if WITH_EDITOR
 
-/**
- * Shared shader-building helpers for the VRR material nodes (all built from FMaterialCompiler ops, no custom HLSL).
- * Post-process helpers sample PostProcessInput0 in viewport UV (0-1 over the view, not the whole buffer).
- */
 namespace VrrMaterialMath
 {
-	/** Optional input if connected, else a scalar constant. */
+	/** 0.618...: stepping by the golden ratio's fraction gives well spread pseudo-random values per frame. */
+	constexpr float GoldenRatioFrac = 0.6180339887f;
+
+	// INPUTS
+
+	/** True when something is wired into the pin. */
+	inline bool IsConnected(const FExpressionInput& Input)
+	{
+		return Input.GetTracedInput().Expression != nullptr;
+	}
+
+	/** The pin's value if connected, else the scalar Default (usually the matching property). */
 	inline int32 InputOr(FMaterialCompiler* Compiler, FExpressionInput& Input, float Default)
 	{
-		return Input.GetTracedInput().Expression ? Input.Compile(Compiler) : Compiler->Constant(Default);
+		return IsConnected(Input) ? Input.Compile(Compiler) : Compiler->Constant(Default);
 	}
+
+	/**
+	 * The pin's value as a float3 if connected, else Default.
+	 * Vector parameters (and Parameter Collection vectors) are float4, so the alpha is dropped;
+	 * a scalar is spread to all three components.
+	 */
+	inline int32 Float3Or(FMaterialCompiler* Compiler, FExpressionInput& Input, const FVector3f& Default)
+	{
+		return IsConnected(Input)
+			? Compiler->ValidCast(Input.Compile(Compiler), MCT_Float3)
+			: Compiler->Constant3(Default.X, Default.Y, Default.Z);
+	}
+
+	/** Float3Or for colors: RGB of the pin if connected, else the property's RGB. */
+	inline int32 ColorOr(FMaterialCompiler* Compiler, FExpressionInput& Input, const FLinearColor& Default)
+	{
+		return Float3Or(Compiler, Input, FVector3f(Default.R, Default.G, Default.B));
+	}
+
+	// COMPONENTS
 
 	inline int32 X(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, true, false, false, false); }
 	inline int32 Y(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, false, true, false, false); }
 	inline int32 Z(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, false, false, true, false); }
+	inline int32 W(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, false, false, false, true); }
+	inline int32 XYZ(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, true, true, true, false); }
+
+	// MATH
 
 	/** Rec. 709 luminance of a color. */
 	inline int32 Luminance(FMaterialCompiler* Compiler, int32 Color)
 	{
-		return Compiler->Dot(Compiler->ComponentMask(Color, true, true, true, false), Compiler->Constant3(0.2126f, 0.7152f, 0.0722f));
+		return Compiler->Dot(XYZ(Compiler, Color), Compiler->Constant3(0.2126f, 0.7152f, 0.0722f));
 	}
 
 	/**
-	 * 0-1 hash of a float2 (Dave Hoskins' hash12, no sine, so it stays stable for large pixel coordinates):
+	 * 0-1 hash of a float2 (Dave Hoskins' hash12). It uses no sine, so it stays stable for large pixel coordinates:
 	 *   p3 = frac(p.xyx * 0.1031);  p3 += dot(p3, p3.yzx + 33.33);  return frac((p3.x + p3.y) * p3.z);
 	 */
 	inline int32 Hash12(FMaterialCompiler* Compiler, int32 P)
 	{
+		// 1. Spread the two coordinates over three components and scramble them with frac
 		const int32 PX = X(Compiler, P);
 		const int32 PY = Y(Compiler, P);
 		int32 P3 = Compiler->Frac(Compiler->Mul(Compiler->AppendVector(Compiler->AppendVector(PX, PY), PX), Compiler->Constant(0.1031f)));
+
+		// 2. Mix the components into each other (p3 += dot(p3, p3.yzx + 33.33))
 		const int32 YZX = Compiler->AppendVector(Compiler->AppendVector(Y(Compiler, P3), Z(Compiler, P3)), X(Compiler, P3));
 		P3 = Compiler->Add(P3, Compiler->Dot(P3, Compiler->Add(YZX, Compiler->Constant(33.33f))));
+
+		// 3. Fold back to one 0-1 value
 		return Compiler->Frac(Compiler->Mul(Compiler->Add(X(Compiler, P3), Y(Compiler, P3)), Z(Compiler, P3)));
 	}
 
-	/** Smooth 0-1 value noise on a float2 (one random value per integer cell, smoothstep-blended between the four corners). */
+	/**
+	 * Smooth 0-1 value noise on a float2: one random value per integer cell, blended between the cell's four
+	 * corners with a smoothstep curve so there are no visible creases at the cell edges.
+	 */
 	inline int32 ValueNoise(FMaterialCompiler* Compiler, int32 P)
 	{
+		// 1. Which cell, and where inside it (0-1)
 		const int32 Cell = Compiler->Floor(P);
 		const int32 F = Compiler->Frac(P);
-		// u = f * f * (3 - 2f)
+
+		// 2. Smoothstep weights: u = f * f * (3 - 2f)
 		const int32 U = Compiler->Mul(Compiler->Mul(F, F), Compiler->Sub(Compiler->Constant(3.0f), Compiler->Mul(Compiler->Constant(2.0f), F)));
+
+		// 3. Random value at each corner
 		const int32 A = Hash12(Compiler, Cell);
 		const int32 B = Hash12(Compiler, Compiler->Add(Cell, Compiler->Constant2(1.0f, 0.0f)));
 		const int32 C = Hash12(Compiler, Compiler->Add(Cell, Compiler->Constant2(0.0f, 1.0f)));
 		const int32 D = Hash12(Compiler, Compiler->Add(Cell, Compiler->Constant2(1.0f, 1.0f)));
+
+		// 4. Blend along X on the top and bottom edges, then along Y between them
 		const int32 UX = X(Compiler, U);
 		return Compiler->Lerp(Compiler->Lerp(A, B, UX), Compiler->Lerp(C, D, UX), Y(Compiler, U));
 	}
+
+	/** Hash12 of (A, B + Salt): a 0-1 random value per A (e.g. a scanline) that changes with B (e.g. a frame seed). */
+	inline int32 Hash2(FMaterialCompiler* Compiler, int32 A, int32 B, float Salt)
+	{
+		return Hash12(Compiler, Compiler->AppendVector(A, Compiler->Add(B, Compiler->Constant(Salt))));
+	}
+
+	// TIME
 
 	/** Seconds: real time (keeps running while paused) or game time. */
 	inline int32 Seconds(FMaterialCompiler* Compiler, bool bIgnorePause)
@@ -69,22 +142,24 @@ namespace VrrMaterialMath
 		return Compiler->Floor(Compiler->Mul(Seconds(Compiler, bIgnorePause), Compiler->Constant(FMath::Max(Rate, 0.1f))));
 	}
 
-	/** A 0-1000 offset that jumps to a new pseudo-random value every frame (golden ratio sequence; small for float precision). */
-	inline int32 FrameSeed(FMaterialCompiler* Compiler, int32 Frame)
+	/** frac(Frame * 0.618...): a 0-1 value that jumps to a new, well spread value every frame. */
+	inline int32 FrameRandom(FMaterialCompiler* Compiler, int32 Frame)
 	{
-		return Compiler->Mul(Compiler->Frac(Compiler->Mul(Frame, Compiler->Constant(0.6180339887f))), Compiler->Constant(1000.0f));
+		return Compiler->Frac(Compiler->Mul(Frame, Compiler->Constant(GoldenRatioFrac)));
 	}
 
-	/** Hash12 of (A, B + Salt): a 0-1 random value per A (e.g. a scanline) that changes with B (e.g. a frame seed). */
-	inline int32 Hash2(FMaterialCompiler* Compiler, int32 A, int32 B, float Salt)
+	/** FrameRandom scaled to 0-1000: an offset for noise lookups (kept small for float precision). */
+	inline int32 FrameSeed(FMaterialCompiler* Compiler, int32 Frame)
 	{
-		return Hash12(Compiler, Compiler->AppendVector(A, Compiler->Add(B, Compiler->Constant(Salt))));
+		return Compiler->Mul(FrameRandom(Compiler, Frame), Compiler->Constant(1000.0f));
 	}
+
+	// POST PROCESS
 
 	/** The pixel's viewport UV, or the UV input when connected. */
 	inline int32 ViewportUV(FMaterialCompiler* Compiler, FExpressionInput& UVInput)
 	{
-		return UVInput.GetTracedInput().Expression ? UVInput.Compile(Compiler) : Compiler->GetViewportUV();
+		return IsConnected(UVInput) ? UVInput.Compile(Compiler) : Compiler->GetViewportUV();
 	}
 
 	/** View size in pixels (float2). */
@@ -94,7 +169,7 @@ namespace VrrMaterialMath
 	}
 
 	/**
-	 * UV size of one pixel at 1080p, aspect-corrected: offsets in "1080p pixels" look the same at any resolution.
+	 * UV size of one pixel at 1080p, aspect-corrected, so offsets in "1080p pixels" look the same at any resolution:
 	 *   (H / W / 1080, 1 / 1080)
 	 */
 	inline int32 PixelAt1080(FMaterialCompiler* Compiler)
@@ -109,7 +184,7 @@ namespace VrrMaterialMath
 	{
 		const int32 Clamped = Compiler->Saturate(UV);
 		const int32 Sample = Compiler->SceneTextureLookup(Clamped, PPI_PostProcessInput0, /*bFiltered=*/ true, /*bClamped=*/ false, /*bUnused=*/ false);
-		return Compiler->ComponentMask(Sample, true, true, true, false);
+		return XYZ(Compiler, Sample);
 	}
 }
 

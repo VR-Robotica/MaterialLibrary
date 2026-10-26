@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_FilmLens.generated.h"
 
 /**
@@ -16,7 +16,7 @@
  * Output: the filtered scene color. Chain Vrr Halation (added) and Vrr Film Grain after it.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrFilmLens : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrFilmLens : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -49,6 +49,5 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 #endif
 };

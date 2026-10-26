@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Materials/MaterialExpression.h"
+#include "MF_Base.h"
 #include "MF_UVRegion.generated.h"
 
 /**
@@ -26,7 +26,7 @@
  * The row and column math must stay in step with MakeRegions and MakeUDIMTiles in VRR_EditorTools' Core_UVLayout.cpp.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrUVRegion : public UMaterialExpression
+class VRR_MATERIALS_API UMaterialExpressionVrrUVRegion : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 
@@ -70,7 +70,6 @@ public:
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
-	virtual void GetCaption(TArray<FString>& OutCaptions) const override;
 	virtual EMaterialValueType GetInputValueType(int32 InputIndex) override;
 
 private:
