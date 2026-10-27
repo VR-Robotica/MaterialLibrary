@@ -8,8 +8,9 @@
  *   - This node projects the pixel's world position into that view and compares depths: if something in the map
  *     is closer to the light than the pixel, the pixel is in shadow.
  *  Shadow-map artifacts are handled the usual way:
- *   - Acne (lit surfaces shadowing themselves): a depth bias in cm plus one that scales with texel size, and the
- *     sample point is pushed off the surface along the normal.
+ *   - Acne (lit surfaces shadowing themselves): a depth bias in cm, plus one that scales with texel size, plus a
+ *     slope-scaled one that grows as the surface turns away from the light (where acne shows as a diamond pattern
+ *     on curved surfaces); the sample point is also pushed off the surface along the normal.
  *   - Hard, pixelated edges: optional 5-tap filtering (center + 4 diagonals at SoftnessTexels).
  *   - A visible edge where the map ends: shadows fade out near its border.
  *  With no caster in the level the map width is 0, and the node returns fully lit.
@@ -17,7 +18,7 @@
  * Steps
  *  1. Read the capture's view from the Shadow* inputs.
  *  2. Pixel position relative to the capture, pushed along the normal.
- *  3. Project into map UV and depth.
+ *  3. Project into map UV and depth, minus the bias (constant + texel + slope).
  *  4. Depth test (1 or 5 taps).
  *  5. Fade near the border and when no caster is active.
  *
@@ -81,7 +82,20 @@ int32 UMaterialExpressionVrrToonShadow::Compile(FMaterialCompiler* Compiler, int
 	const int32 MapY = Compiler->Div(Compiler->Dot(Relative, Up), Width);
 	const int32 UV = Compiler->AppendVector(Compiler->Add(MapX, Half), Compiler->Sub(Half, MapY));
 
-	const int32 Bias = Compiler->Add(Compiler->Constant(DepthBias), Compiler->Mul(TexelSize, Compiler->Constant(TexelBias)));
+	// 3a. Depth bias in cm: constant + texel-sized + slope-scaled. On a surface tilted from the light by angle theta,
+	//     depth changes by tan(theta) cm per cm across the map, so one texel (and each Softness tap, up to
+	//     Softness * sqrt(2) texels away diagonally) can read a depth that much closer than the pixel's own surface.
+	//     cos(theta) is clamped to 0.2 (tan about 5) so the bias stays bounded at the terminator and on the back side,
+	//     which the light mask already shades.
+	int32 BiasTexels = Compiler->Constant(TexelBias);
+	if (SlopeBias > 0.0f)
+	{
+		const int32 CosTheta = Compiler->Max(Compiler->Dot(N, Compiler->Sub(Zero, Forward)), Compiler->Constant(0.2f));
+		const int32 TanTheta = Compiler->Div(Compiler->SquareRoot(Compiler->Max(Compiler->Sub(One, Compiler->Mul(CosTheta, CosTheta)), Zero)), CosTheta);
+		const float TapReach = 1.0f + FMath::Max(SoftnessTexels, 0.0f) * UE_SQRT_2;	// texels from the pixel to its farthest tap
+		BiasTexels = Compiler->Add(BiasTexels, Compiler->Mul(TanTheta, Compiler->Constant(SlopeBias * TapReach)));
+	}
+	const int32 Bias = Compiler->Add(Compiler->Constant(DepthBias), Compiler->Mul(TexelSize, BiasTexels));
 	const int32 PixelDepth = Compiler->Sub(Compiler->Dot(Relative, Forward), Bias);
 
 	// 4. Depth test: lit (1) when nothing in the map is closer to the light than this pixel

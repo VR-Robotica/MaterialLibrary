@@ -27,8 +27,9 @@ enum class EVrrHalftoneStyle : uint8
 	Print,
 	/**
 	 * Hi-Fi RUSH style: dots on lit areas, sized by brightness, so light falloff reads as dots shrinking instead of a
-	 * smooth gradient. Dots grow from Shadow Level (where hatching stops) and merge at Highlight Level, so fully lit
+	 * smooth gradient. Dots grow from Shadow Level (set it to Hatch End Level to hand off from the lines) and merge at Highlight Level, so fully lit
 	 * areas stay clean. Dots brighten and the gaps darken, keeping the average brightness the same.
+	 * Dots shrink with distance and are gone at Dot Shrink Distance.
 	 */
 	LitFalloff UMETA(DisplayName = "Hi-Fi Rush (Lit Falloff)"),
 };
@@ -36,8 +37,9 @@ enum class EVrrHalftoneStyle : uint8
 /**
  * Comic print shading for a Post Process material (Hi-Fi RUSH style), applied to Color:
  *
- *  - Hatching: parallel ink lines on dark areas. Lines get thicker the darker the area, and a second, crossed set
- *    is added in the darkest areas.
+ *  - Hatching: parallel ink lines below Hatch End Level. Lines get thicker the darker the area (up to Hatch Max
+ *    Width at black), and a second, crossed set is added in the darkest areas. Over near-black, lines switch to a
+ *    light ink so they still show.
  *  - Halftone: round dots on bright areas that grow with brightness, or (Dot Style = Print) classic print ink dots
  *    that grow as areas get darker, or (Dot Style = Hi-Fi Rush) dots that turn light falloff into dot size.
  *  - Midtones stay clean, and the pattern fades out with distance (and on the sky).
@@ -89,6 +91,12 @@ public:
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Dot Color' if not specified"))
 	FExpressionInput DotColorIn;
 
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Dot Shrink Distance' if not specified"))
+	FExpressionInput DotShrinkDistanceIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Hatch End Level' if not specified"))
+	FExpressionInput HatchEndLevelIn;
+
 	/** Screen: patterns fixed to the screen. World: patterns printed on surfaces. */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade")
 	EVrrComicSpace Space = EVrrComicSpace::Screen;
@@ -101,9 +109,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Comic Shade", meta = (ClampMin = "1.0"))
 	float FadeEnd = 15000.0f;
 
-	/** Tone below this gets hatching lines (thicker the darker). */
-	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (OverridingInputProperty = "ShadowLevelIn", ClampMin = "0.0", ClampMax = "1.0"))
+	/** Hi-Fi Rush: dots start at this tone and grow toward Highlight Level. (Hatching ends at Hatch End Level.) */
+	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "ShadowLevelIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float ShadowLevel = 0.3f;
+
+	/** Lines are thickest at black (Hatch Max Width), thin out as tone rises, and end at this tone. */
+	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (OverridingInputProperty = "HatchEndLevelIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float HatchEndLevel = 0.3f;
 
 	/** Distance between lines: pixels at 1080p (Screen) or cm (World). */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (OverridingInputProperty = "HatchSpacingIn", ClampMin = "1.0", UIMax = "32.0"))
@@ -121,7 +133,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching")
 	bool bCrossHatch = true;
 
-	/** Below this fraction of Shadow Level, the crossing lines start (0.5 = in the darker half of the hatched range). */
+	/** Below this fraction of Hatch End Level, the crossing lines start (0.5 = in the darker half of the hatched range). */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (EditCondition = "bCrossHatch", ClampMin = "0.0", ClampMax = "1.0"))
 	float CrossHatchStart = 0.5f;
 
@@ -132,6 +144,17 @@ public:
 	/** Lines multiply the picture by this color. */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (OverridingInputProperty = "InkColorIn"))
 	FLinearColor InkColor = FLinearColor(0.05f, 0.04f, 0.12f);
+
+	/**
+	 * Where the picture is darker than this (luminance), lines switch to Light Ink Color, so they still show on black
+	 * (darkening toward Ink Color can't be seen there). 0 = always dark ink.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching", meta = (ClampMin = "0.0", ClampMax = "0.5"))
+	float LightInkBelow = 0.04f;
+
+	/** Line color over near-black areas (see Light Ink Below). */
+	UPROPERTY(EditAnywhere, Category = "Comic Shade|Hatching")
+	FLinearColor LightInkColor = FLinearColor(0.22f, 0.24f, 0.34f);
 
 	/**
 	 * Highlights: light dots on bright areas. Print: ink dots that grow as areas get darker (classic print).
@@ -166,6 +189,13 @@ public:
 	/** Highlights dots blend the picture toward this color, and Hi-Fi Rush dots are tinted by it. Print dots use Ink Color. */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "DotColorIn"))
 	FLinearColor DotColor = FLinearColor(1.0f, 1.0f, 1.0f);
+
+	/**
+	 * Hi-Fi Rush only: dots are full size at the camera, shrink with distance, and are gone at this distance (cm),
+	 * so only nearby objects get the big dots. 0 = no shrinking.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "DotShrinkDistanceIn", ClampMin = "0.0", UIMax = "20000.0"))
+	float DotShrinkDistance = 5000.0f;
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;

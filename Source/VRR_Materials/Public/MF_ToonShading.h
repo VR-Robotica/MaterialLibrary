@@ -8,12 +8,15 @@
  * Toon shading with a fake (art-directed) light. Scene lights are ignored.
  * Plug Emissive into an Unlit material's Emissive Color.
  *
- *   NdotL     = dot(N, LightDirection)
+ *   NdotL     = dot(N, LightDirection) + BandOffset
  *   LightMask = NdotL above Threshold, split into Bands with a Softness-wide edge, times Shadow
- *   Diffuse   = BaseColor * lerp(ShadowColor, LightColor, LightMask)
+ *   Bounce    = flat band where dot(N, BounceDirection) > BounceThreshold, shadow side only (optional)
+ *   EdgeLine  = thin light line on the shadow side of each band edge, EdgeLineWidth px wide (optional)
+ *   Diffuse   = BaseColor * (lerp(ShadowColor, LightColor, LightMask + EdgeLine * (1 - EdgeLineColorBlend) / Bands) + BounceColor * Bounce * BounceIntensity)
  *   Specular  = smoothstep around NdotH = 1 - SpecularSize, lit side only
  *   Rim       = smoothstep around (1 - NdotV) = 1 - RimWidth
  *   Emissive  = Diffuse + Specular * LightColor * SpecularIntensity + Rim * RimColor * RimIntensity
+ *   Emissive  = lerp(Emissive, EdgeLineColor, EdgeLine * EdgeLineColorBlend)   (colored / white edge line, optional)
  *
  * For one light shared by every toon material, use the MF_ToonLit material function,
  * which feeds this node from MPC_ToonLighting.
@@ -57,6 +60,26 @@ public:
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Bands' if not specified"))
 	FExpressionInput BandsIn;
 
+	/** Per-pixel shift of the band edges, in NdotL units (e.g. small animated noise for a hand-drawn wobble). Defaults to 0. */
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Per-pixel shift of the band edges in NdotL units, e.g. noise * 0.05 for a hand-drawn wobble. Moves the light and bounce band edges only. Defaults to 0"))
+	FExpressionInput BandOffset;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineWidth' if not specified"))
+	FExpressionInput EdgeLineWidthIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineIntensity' if not specified"))
+	FExpressionInput EdgeLineIntensityIn;
+
+	/** 0-1 multiplier along the edge line, e.g. noise, so it breaks up like a hand-painted cel. Defaults to 1. */
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0-1 multiplier along the edge line (e.g. noise) so it breaks up and varies like a hand-painted cel. Defaults to 1"))
+	FExpressionInput EdgeLineMask;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineColor' if not specified"))
+	FExpressionInput EdgeLineColorIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineColorBlend' if not specified"))
+	FExpressionInput EdgeLineColorBlendIn;
+
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'SpecularSize' if not specified"))
 	FExpressionInput SpecularSizeIn;
 
@@ -71,6 +94,15 @@ public:
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'RimIntensity' if not specified"))
 	FExpressionInput RimIntensityIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World-space direction towards the bounce source. Defaults to 'BounceDirection' if not specified"))
+	FExpressionInput BounceDirectionIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'BounceColor' if not specified"))
+	FExpressionInput BounceColorIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'BounceIntensity' if not specified"))
+	FExpressionInput BounceIntensityIn;
 
 	// Surface
 
@@ -108,6 +140,26 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Bands", meta = (OverridingInputProperty = "BandsIn", ClampMin = "1", UIMax = "6"))
 	float Bands = 1.0f;
 
+	// Edge line
+
+	/** Width of the light line along the shadow side of each band edge, in pixels at 1080p (scales with resolution). */
+	UPROPERTY(EditAnywhere, Category = "Edge Line", meta = (OverridingInputProperty = "EdgeLineWidthIn", ClampMin = "0.0", UIMax = "8.0"))
+	float EdgeLineWidth = 3.0f;
+
+	/** How far the line lifts the shadow toward the next band's tone. 0 turns it off (and compiles it out unless the pin is wired). */
+	UPROPERTY(EditAnywhere, Category = "Edge Line", meta = (OverridingInputProperty = "EdgeLineIntensityIn", ClampMin = "0.0", UIMax = "1.0"))
+	float EdgeLineIntensity = 0.0f;
+
+	/** Color the line is painted with as Edge Line Color Blend goes to 1. White (or brighter, HDR) makes the line
+	 *  bright enough for post-process glow such as Vrr Halation to pick it up. */
+	UPROPERTY(EditAnywhere, Category = "Edge Line", meta = (OverridingInputProperty = "EdgeLineColorIn", HideAlphaChannel))
+	FLinearColor EdgeLineColor = FLinearColor::White;
+
+	/** 0 = the line lifts the shadow toward the next band's tone; 1 = the line is painted in Edge Line Color.
+	 *  0 compiles the color path out unless the pin is wired. */
+	UPROPERTY(EditAnywhere, Category = "Edge Line", meta = (OverridingInputProperty = "EdgeLineColorBlendIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float EdgeLineColorBlend = 0.0f;
+
 	// Specular
 
 	/** Size of the toon highlight. Larger = bigger spot. */
@@ -134,6 +186,28 @@ public:
 	/** 0 = rim all around the silhouette, 1 = rim only on the lit side. */
 	UPROPERTY(EditAnywhere, Category = "Rim", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float RimLightAlign = 0.5f;
+
+	// Bounce light
+
+	/** World-space direction pointing towards the bounce source. Default: from below, like light off the ground. */
+	UPROPERTY(EditAnywhere, Category = "Bounce", meta = (OverridingInputProperty = "BounceDirectionIn"))
+	FVector BounceDirection = FVector(0.0, 0.0, -1.0);
+
+	/** Bounce tint, multiplied with Base Color. Usually the ground's color. */
+	UPROPERTY(EditAnywhere, Category = "Bounce", meta = (OverridingInputProperty = "BounceColorIn"))
+	FLinearColor BounceColor = FLinearColor(0.55f, 0.42f, 0.32f);
+
+	/** How bright the bounce is. 0 turns it off (and compiles it out unless the pin is wired). */
+	UPROPERTY(EditAnywhere, Category = "Bounce", meta = (OverridingInputProperty = "BounceIntensityIn", ClampMin = "0.0", UIMax = "2.0"))
+	float BounceIntensity = 0.0f;
+
+	/** How far the bounce band reaches: dot(N, BounceDirection) above this gets it. Higher = a thinner band. */
+	UPROPERTY(EditAnywhere, Category = "Bounce", meta = (UIMin = "-0.5", UIMax = "0.9"))
+	float BounceThreshold = 0.2f;
+
+	/** On: bounce only shows on the shadow side (classic). Off: it also adds to lit areas. */
+	UPROPERTY(EditAnywhere, Category = "Bounce")
+	bool bBounceInShadowOnly = true;
 
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;

@@ -10,7 +10,8 @@ public class VRR_Materials : ModuleRules
 		{
 			"Core",
 			"CoreUObject",
-			"Engine"
+			"Engine",
+			"DeveloperSettings"	// UVrr_ToonBoilSettings (Project Settings > Plugins > VRR Toon Boil)
 		});
 	}
 }

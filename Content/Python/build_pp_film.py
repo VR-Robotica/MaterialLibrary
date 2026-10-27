@@ -118,6 +118,8 @@ connect(vector("Comic - InkColor", unreal.LinearColor(0.05, 0.04, 0.12, 1.0), "C
 connect(scalar("Comic - DotSpacing", 7.0, "Comic", -1000, 400), "", comic, "DotSpacingIn")
 connect(scalar("Comic - DotOpacity", 0.35, "Comic", -1000, 500, slider_max=1.0), "", comic, "DotOpacityIn")
 connect(vector("Comic - DotColor", unreal.LinearColor(1.0, 1.0, 1.0, 1.0), "Comic", -1000, 600), "", comic, "DotColorIn")
+connect(scalar("Comic - HatchEndLevel", 0.3, "Comic", -1000, 700, slider_max=1.0), "", comic, "HatchEndLevelIn")
+connect(scalar("Comic - DotShrinkDistance", 5000.0, "Comic", -1000, 800, slider_max=20000.0), "", comic, "DotShrinkDistanceIn")
 
 comic_switch = node(unreal.MaterialExpressionStaticSwitchParameter, -400, 0)
 comic_switch.set_editor_property("parameter_name", "UseComicShade")

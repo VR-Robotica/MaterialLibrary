@@ -12,19 +12,22 @@
  *  one screen pixel, measured from screen derivatives, so lines and dots stay crisp at any spacing or distance.
  *
  *  Tone (0 dark - 1 bright) decides the sizes:
- *   - Hatching: below Shadow Level, lines thicken the darker it gets; a second crossed set joins in the darkest part.
+ *   - Hatching: below Hatch End Level, lines thicken the darker it gets (up to Hatch Max Width at black); a second
+ *               crossed set joins in the darkest part. Lines darken toward Ink Color, or over near-black (where
+ *               darkening can't be seen) lighten toward Light Ink Color.
  *   - Halftone (by Dot Style):
  *       Highlights  light dots above Highlight Level that grow with brightness.
  *       Print       classic ink dots that grow as it gets darker, touching at mid-gray and leaving paper holes.
  *       Hi-Fi Rush  dots between Shadow Level and Highlight Level, so light falloff reads as dot size; dots brighten
- *                   and gaps darken by their covered area, keeping the average brightness the same.
+ *                   and gaps darken by their covered area, keeping the average brightness the same. Dots also
+ *                   shrink with distance (gone at Dot Shrink Distance), so big dots are only on nearby objects.
  *  Midtones stay clean, and both patterns fade out with distance (the sky is always past the fade).
  *
  * Steps
  *  1. Pattern space (screen pixels, or world plane axes).
  *  2. MakeGrid(): rotated, scaled grid coordinate + anti-aliasing width.
  *  3. Hatching mask.
- *  4. Halftone mask (one branch per Dot Style).
+ *  4. Halftone mask (one branch per Dot Style; Hi-Fi Rush scales its dots by distance).
  *  5. Distance fade.
  *  6. Composite onto Color.
  *
@@ -146,10 +149,10 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 
 	const int32 ToneArg = IsConnected(Tone) ? Compiler->ValidCast(Tone.Compile(Compiler), MCT_Float1) : Compiler->Saturate(Luminance(Compiler, ColorArg));
 
-	// 3. Hatching: line half-width grows with how far Tone is under Shadow Level
+	// 3. Hatching: line half-width grows with how far Tone is under Hatch End Level (0 there, Hatch Max Width at black)
 	int32 Hatch = Zero;
 	{
-		const int32 Level = Compiler->Max(InputOr(Compiler, ShadowLevelIn, ShadowLevel), Compiler->Constant(0.001f));
+		const int32 Level = Compiler->Max(InputOr(Compiler, HatchEndLevelIn, HatchEndLevel), Compiler->Constant(0.001f));
 		const int32 Dark = Compiler->Saturate(Compiler->Div(Compiler->Sub(Level, ToneArg), Level));	// 0 at the level, 1 at black
 		const int32 Spacing = InputOr(Compiler, HatchSpacingIn, HatchSpacing);
 
@@ -174,6 +177,9 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 		}
 	}
 
+	// This pixel's distance from the camera (cm), used by the Hi-Fi Rush dot shrink and the distance fade (step 5)
+	const int32 Depth = X(Compiler, Compiler->SceneTextureLookup(Compiler->GetViewportUV(), PPI_SceneDepth, false, false, false));
+
 	// 4. Halftone
 	int32 Dots = Zero;
 	int32 DotArea = Zero;	// Hi-Fi Rush: the fraction of each cell the dots cover, so the gaps can balance them
@@ -186,10 +192,19 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 		const int32 High = InputOr(Compiler, HighlightLevelIn, HighlightLevel);
 		const int32 Bright = Compiler->Saturate(Compiler->Div(Compiler->Sub(ToneArg, Low), Compiler->Max(Compiler->Sub(High, Low), Compiler->Constant(0.001f))));
 
-		// Radius up to just past half the cell diagonal (0.707), so the dots fully merge at Highlight Level.
+		// Distance shrink: 1 at the camera, falling linearly to 0 at Dot Shrink Distance (always 1 when it's 0 = off).
+		// It scales the radius, so far dots never merge and the area balance below still matches what's drawn.
+		const int32 ShrinkDistance = InputOr(Compiler, DotShrinkDistanceIn, DotShrinkDistance);
+		const int32 ShrinkAmount = Compiler->Saturate(Compiler->Div(Depth, Compiler->Max(ShrinkDistance, One)));
+		const int32 DistanceScale = Compiler->Sub(One, Compiler->Mul(ShrinkAmount, Compiler->Step(One, ShrinkDistance)));
+
+		// Radius up to just past half the cell diagonal (0.707), so the dots fully merge at Highlight Level up close.
 		// sqrt: dot AREA follows brightness, like print.
-		const int32 Radius = Compiler->Mul(Compiler->SquareRoot(Bright), Compiler->Constant(0.72f));
-		Dots = Compiler->Mul(Coverage(Radius, DotDistance, DotGrid.Width), Gate(Bright));
+		const int32 Radius = Compiler->Mul(Compiler->Mul(Compiler->SquareRoot(Bright), Compiler->Constant(0.72f)), DistanceScale);
+
+		// Both gates: Coverage() is 0.5 at a zero-radius dot's center, so dots must be switched off when either is 0
+		const int32 DotGate = Compiler->Mul(Gate(Bright), Gate(DistanceScale));
+		Dots = Compiler->Mul(Coverage(Radius, DotDistance, DotGrid.Width), DotGate);
 
 		// Covered area = circle area in a unit cell, minus the four overlaps with the neighbor cells once the radius
 		// passes 0.5. Each overlap is a circular segment: r^2 * acos(0.5 / r) - 0.5 * sqrt(r^2 - 0.25).
@@ -199,7 +214,7 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 			Compiler->Mul(Compiler->Mul(RO, RO), Compiler->Arccosine(Compiler->Div(Half, RO))),
 			Compiler->Mul(Half, Compiler->SquareRoot(Compiler->Sub(Compiler->Mul(RO, RO), Compiler->Constant(0.25f)))));
 		const int32 Overlaps = Compiler->Mul(Compiler->Mul(Overlap, Compiler->Constant(4.0f)), Compiler->Step(Half, Radius));
-		DotArea = Compiler->Mul(Compiler->Saturate(Compiler->Sub(Compiler->Mul(R2, Compiler->Constant(PI)), Overlaps)), Gate(Bright));
+		DotArea = Compiler->Mul(Compiler->Saturate(Compiler->Sub(Compiler->Mul(R2, Compiler->Constant(PI)), Overlaps)), DotGate);
 	}
 	else if (DotStyle == EVrrHalftoneStyle::Print)
 	{
@@ -232,7 +247,6 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 
 	// 5. Distance fade from this pixel's depth, so the sky never gets a pattern
 	{
-		const int32 Depth = X(Compiler, Compiler->SceneTextureLookup(Compiler->GetViewportUV(), PPI_SceneDepth, false, false, false));
 		const float Range = FMath::Max(FadeEnd - FadeStart, 1.0f);
 		const int32 Fade = Compiler->Sub(One, Compiler->Saturate(Compiler->Div(Compiler->Sub(Depth, Compiler->Constant(FadeStart)), Compiler->Constant(Range))));
 		Hatch = Compiler->Mul(Hatch, Fade);
@@ -249,9 +263,15 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 	}
 
 	// 6. Composite
-	// 6a. Lines multiply toward Ink Color
+	// 6a. Lines multiply toward Ink Color. Over near-black (luminance under Light Ink Below) that change can't be
+	//     seen, so the lines blend toward Light Ink Color instead: fully light below half the limit, a short blend
+	//     up to the limit. Light Ink Below = 0 makes LightMix 0 everywhere (always dark ink).
 	const int32 Ink = ColorOr(Compiler, InkColorIn, InkColor);
-	int32 Result = Compiler->Lerp(ColorArg, Compiler->Mul(ColorArg, Ink), Compiler->Mul(Hatch, InputOr(Compiler, HatchOpacityIn, HatchOpacity)));
+	const int32 LightLimit = Compiler->Constant(LightInkBelow);
+	const int32 LightMix = Compiler->Saturate(Compiler->Div(Compiler->Sub(LightLimit, Luminance(Compiler, ColorArg)),
+		Compiler->Constant(FMath::Max(LightInkBelow * 0.5f, 0.0001f))));
+	const int32 LineColor = Compiler->Lerp(Compiler->Mul(ColorArg, Ink), Compiler->Constant3(LightInkColor.R, LightInkColor.G, LightInkColor.B), LightMix);
+	int32 Result = Compiler->Lerp(ColorArg, LineColor, Compiler->Mul(Hatch, InputOr(Compiler, HatchOpacityIn, HatchOpacity)));
 	const int32 Opacity = InputOr(Compiler, DotOpacityIn, DotOpacity);
 
 	// 6b. Hi-Fi Rush: dots brighten and gaps darken. 1 + Opacity * (Dots - Area) averages to 1 over a cell, so the

@@ -54,6 +54,14 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Shadow", meta = (ClampMin = "0.0", UIMax = "5.0"))
 	float TexelBias = 1.5f;
 
+	/**
+	 * Extra bias on surfaces that turn away from the light, in texels per unit of slope (tan of the angle to the
+	 * light), also covering the Softness taps. Removes the diamond-pattern acne on curved surfaces while keeping
+	 * contact shadows tight where surfaces face the light. 0 = off.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Shadow", meta = (ClampMin = "0.0", UIMax = "4.0"))
+	float SlopeBias = 1.0f;
+
 	/** Pushes the sample point along the normal, in texels. Removes acne on surfaces at grazing angles. */
 	UPROPERTY(EditAnywhere, Category = "Shadow", meta = (ClampMin = "0.0", UIMax = "5.0"))
 	float NormalOffset = 1.0f;
