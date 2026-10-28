@@ -11,7 +11,8 @@
  *
  * Per update
  *  1. Point the capture along the light (Forward = -LightDirection) and build its Right / Up axes.
- *  2. Center on the player (or this actor), snapped to whole texels so shadows don't shimmer as it moves.
+ *  2. Center on the player pushed ahead along the camera's facing by View Offset (smoothed), or on this actor in
+ *     the editor; snapped to whole texels so shadows don't shimmer as it moves.
  *  3. Back the capture off toward the light by Capture Distance.
  *  4. Write ShadowOrigin / Right / Up / Forward into the collection.
  *  5. Render the capture (deferred in game, immediate in the editor).
@@ -23,6 +24,7 @@
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Engine/World.h"
+#include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
@@ -96,10 +98,10 @@ void AVrr_ToonShadowCaster::OnConstruction(const FTransform& Transform)
 void AVrr_ToonShadowCaster::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	UpdateCapture();
+	UpdateCapture(DeltaSeconds);
 }
 
-void AVrr_ToonShadowCaster::UpdateCapture()
+void AVrr_ToonShadowCaster::UpdateCapture(float DeltaSeconds)
 {
 	// Nothing to do until the collection and render target are set
 	UWorld* World = GetWorld();
@@ -120,7 +122,7 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	//    (only Right / Up are snapped; depth along Forward doesn't affect which texel a point lands in)
 	const float Resolution = FMath::Max(ShadowTarget->SizeX, 1);
 	const double TexelSize = ShadowArea / Resolution;
-	const FVector Center = GetShadowCenter();
+	const FVector Center = GetShadowCenter(DeltaSeconds);
 	const double SnappedRight = FMath::GridSnap(FVector::DotProduct(Center, Right), TexelSize);
 	const double SnappedUp = FMath::GridSnap(FVector::DotProduct(Center, Up), TexelSize);
 	const double Depth = FVector::DotProduct(Center, Forward);
@@ -153,8 +155,11 @@ void AVrr_ToonShadowCaster::UpdateCapture()
 	}
 }
 
-/** In game (with Follow Player), the player's view target; otherwise this actor's location. */
-FVector AVrr_ToonShadowCaster::GetShadowCenter() const
+/**
+ * In game (with Follow Player), the player's view target pushed ahead by View Offset along the camera's horizontal
+ * facing; otherwise this actor's location.
+ */
+FVector AVrr_ToonShadowCaster::GetShadowCenter(float DeltaSeconds)
 {
 	UWorld* World = GetWorld();
 	if (bFollowPlayer && World && World->IsGameWorld())
@@ -163,10 +168,25 @@ FVector AVrr_ToonShadowCaster::GetShadowCenter() const
 		{
 			if (const AActor* ViewTarget = PC->GetViewTarget())
 			{
-				return ViewTarget->GetActorLocation();
+				// 1. Target offset: camera forward flattened onto the ground. Its length is cos(pitch), so the offset
+				//    shrinks as the camera looks down, where the visible ground sits around the player anyway.
+				FVector TargetOffset = FVector::ZeroVector;
+				if (ViewOffset > 0.0f && PC->PlayerCameraManager)
+				{
+					const FVector CameraForward = PC->PlayerCameraManager->GetCameraRotation().Vector();
+					TargetOffset = FVector(CameraForward.X, CameraForward.Y, 0.0f) * ViewOffset;
+				}
+
+				// 2. Ease towards it (frame-rate independent), so turning the camera doesn't make the map jump
+				const float Alpha = (DeltaSeconds <= 0.0f || ViewOffsetSmoothing <= 0.0f)
+					? 1.0f : 1.0f - FMath::Exp(-DeltaSeconds / ViewOffsetSmoothing);
+				SmoothedViewOffset = FMath::Lerp(SmoothedViewOffset, TargetOffset, Alpha);
+
+				return ViewTarget->GetActorLocation() + SmoothedViewOffset;
 			}
 		}
 	}
+	SmoothedViewOffset = FVector::ZeroVector;
 	return GetActorLocation();
 }
 

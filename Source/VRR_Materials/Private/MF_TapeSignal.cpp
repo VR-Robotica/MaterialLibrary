@@ -26,30 +26,6 @@ namespace VrrTapeSignal
 {
 	/** Scene taps averaged for the chroma smear. */
 	constexpr int32 ChromaTaps = 5;
-
-	/** RGB -> YIQ (NTSC): Y is brightness, I and Q are color. */
-	int32 ToYIQ(FMaterialCompiler* Compiler, int32 RGB)
-	{
-		const int32 Y = Compiler->Dot(RGB, Compiler->Constant3(0.299f, 0.587f, 0.114f));
-		const int32 I = Compiler->Dot(RGB, Compiler->Constant3(0.596f, -0.274f, -0.322f));
-		const int32 Q = Compiler->Dot(RGB, Compiler->Constant3(0.211f, -0.523f, 0.312f));
-		return Compiler->AppendVector(Compiler->AppendVector(Y, I), Q);
-	}
-
-	/** YIQ -> RGB (inverse of ToYIQ). */
-	int32 ToRGB(FMaterialCompiler* Compiler, int32 YIQ)
-	{
-		const int32 R = Compiler->Dot(YIQ, Compiler->Constant3(1.0f, 0.956f, 0.621f));
-		const int32 G = Compiler->Dot(YIQ, Compiler->Constant3(1.0f, -0.272f, -0.647f));
-		const int32 B = Compiler->Dot(YIQ, Compiler->Constant3(1.0f, -1.106f, 1.703f));
-		return Compiler->AppendVector(Compiler->AppendVector(R, G), B);
-	}
-
-	/** The IQ (color) part of a YIQ value. */
-	int32 IQ(FMaterialCompiler* Compiler, int32 YIQ)
-	{
-		return Compiler->ComponentMask(YIQ, false, true, true, false);
-	}
 }
 
 UMaterialExpressionVrrTapeSignal::UMaterialExpressionVrrTapeSignal(const FObjectInitializer& ObjectInitializer)
@@ -93,7 +69,7 @@ int32 UMaterialExpressionVrrTapeSignal::Compile(FMaterialCompiler* Compiler, int
 		Chroma = Compiler->Lerp(Chroma, Smeared, InputOr(Compiler, ChromaBleedIn, ChromaBleed));
 	}
 	Chroma = Compiler->Mul(Chroma, Compiler->Constant(Saturation));
-	int32 Result = ToRGB(Compiler, Compiler->AppendVector(Luma, Chroma));
+	int32 Result = YIQToRGB(Compiler, Compiler->AppendVector(Luma, Chroma));
 
 	// 2. Scanlines: Wave is 1 on a line's center and 0 in the gap between lines
 	const int32 V = Y(Compiler, BaseUV);

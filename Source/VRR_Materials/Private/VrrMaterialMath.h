@@ -12,7 +12,8 @@
  *  - Inputs:       IsConnected / InputOr / Float3Or / ColorOr, for the "use the pin if wired, else the property"
  *                  pattern every node repeats (properties marked OverridingInputProperty).
  *  - Components:   X / Y / Z / W / XYZ masks, so long ComponentMask calls stay readable.
- *  - Math:         luminance, hashes and value noise (deterministic, no sine, stable at large coordinates).
+ *  - Math:         luminance, YIQ video color space, hashes, value noise (deterministic, no sine, stable at large
+ *                  coordinates) and the engine's gradient noise.
  *  - Time:         seconds (game or real), stepped frame numbers and per-frame random seeds.
  *  - Post process: viewport UV, view size, "1080p pixel" units and clamped scene sampling.
  *
@@ -23,6 +24,7 @@
 #include "CoreMinimal.h"
 #include "MaterialCompiler.h"
 #include "MaterialSceneTextureId.h"
+#include "Materials/MaterialExpressionNoise.h"
 
 #if WITH_EDITOR
 
@@ -79,6 +81,36 @@ namespace VrrMaterialMath
 		return Compiler->Dot(XYZ(Compiler, Color), Compiler->Constant3(0.2126f, 0.7152f, 0.0722f));
 	}
 
+	/** YIQ (NTSC video) matrices, one row per output component: Y is brightness, I (orange-blue) and Q (purple-green) are color. */
+	inline const FVector3f RGBToYIQRows[3] = { { 0.299f, 0.587f, 0.114f }, { 0.596f, -0.274f, -0.322f }, { 0.211f, -0.523f, 0.312f } };
+	inline const FVector3f YIQToRGBRows[3] = { { 1.0f, 0.956f, 0.621f }, { 1.0f, -0.272f, -0.647f }, { 1.0f, -1.106f, 1.703f } };
+
+	/** Rows (float3 dot products) applied to a float3: the shader side of a 3x3 matrix multiply. */
+	inline int32 MulRows(FMaterialCompiler* Compiler, int32 V, const FVector3f (&Rows)[3])
+	{
+		auto Row = [&](int32 i) { return Compiler->Dot(V, Compiler->Constant3(Rows[i].X, Rows[i].Y, Rows[i].Z)); };
+		return Compiler->AppendVector(Compiler->AppendVector(Row(0), Row(1)), Row(2));
+	}
+
+	/** RGB -> YIQ. */
+	inline int32 ToYIQ(FMaterialCompiler* Compiler, int32 RGB) { return MulRows(Compiler, RGB, RGBToYIQRows); }
+
+	/** YIQ -> RGB (inverse of ToYIQ). */
+	inline int32 YIQToRGB(FMaterialCompiler* Compiler, int32 YIQ) { return MulRows(Compiler, YIQ, YIQToRGBRows); }
+
+	/** The IQ (color) part of a YIQ value. */
+	inline int32 IQ(FMaterialCompiler* Compiler, int32 YIQ)
+	{
+		return Compiler->ComponentMask(YIQ, false, true, true, false);
+	}
+
+	/** CPU-side YIQ of a color, for folding property colors into shader constants. */
+	inline FVector3f ToYIQ(const FLinearColor& C)
+	{
+		const FVector3f RGB(C.R, C.G, C.B);
+		return FVector3f(RGB | RGBToYIQRows[0], RGB | RGBToYIQRows[1], RGB | RGBToYIQRows[2]);
+	}
+
 	/**
 	 * 0-1 hash of a float2 (Dave Hoskins' hash12). It uses no sine, so it stays stable for large pixel coordinates:
 	 *   p3 = frac(p.xyx * 0.1031);  p3 += dot(p3, p3.yzx + 33.33);  return frac((p3.x + p3.y) * p3.z);
@@ -120,6 +152,13 @@ namespace VrrMaterialMath
 		// 4. Blend along X on the top and bottom edges, then along Y between them
 		const int32 UX = X(Compiler, U);
 		return Compiler->Lerp(Compiler->Lerp(A, B, UX), Compiler->Lerp(C, D, UX), Y(Compiler, U));
+	}
+
+	/** -1..1 gradient noise (the Noise node's Gradient ALU) at a float3 position, with Levels octaves. */
+	inline int32 GradientNoise(FMaterialCompiler* Compiler, int32 Position, int32 Levels = 1)
+	{
+		return Compiler->Noise(Position, EPositionOrigin::Absolute, 1.0f, 1, NOISEFUNCTION_GradientALU,
+			false, Levels, -1.0f, 1.0f, 2.0f, Compiler->Constant(0.0f), false, 512);
 	}
 
 	/** Hash12 of (A, B + Salt): a 0-1 random value per A (e.g. a scanline) that changes with B (e.g. a frame seed). */

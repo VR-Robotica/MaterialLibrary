@@ -15,6 +15,7 @@
  *  - Dropouts: rare white streaks along a line, where the tape lost its signal for a moment.
  *
  * Connect Vrr Tape Warp's UV to UV so the chroma, lines and noise follow the warped picture.
+ * Follow it with Vrr Tape Grade for the faded colors of a worn tape.
  */
 UCLASS(collapsecategories, hidecategories=Object)
 class VRR_MATERIALS_API UMaterialExpressionVrrTapeSignal : public UMaterialExpressionVrrBase

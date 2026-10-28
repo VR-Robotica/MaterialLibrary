@@ -22,7 +22,9 @@
  *  Band Offset shifts NdotL (and the bounce dot) before banding. Inside a flat band that changes nothing, so it only
  *  moves the edges: feed it small animated noise and the terminator wobbles like hand-drawn shading.
  *  Each mask is also an output, so materials can mix them their own way. Cast shadows come in through Shadow
- *  (Vrr Toon Shadow) and darken the light mask, so specular and rim respect them too.
+ *  (Vrr Toon Shadow) and darken the light mask, so specular and rim respect them too. Their color either follows
+ *  the shadow side (Shadow Color) or, with Cast Shadow Color Blend, multiplies the lit color by Cast Shadow Color,
+ *  like Vrr Blob Shadow does on the floor, so cast and blob shadows match.
  *  MF_ToonLit feeds this node from MPC_ToonLighting so every toon material shares one light.
  *
  * Steps
@@ -33,8 +35,9 @@
  *  5. Bounce mask: smoothstep around dot(N, BounceDirection) (+ Band Offset) = BounceThreshold, times (1 - Light Mask).
  *  6. Edge line: distance below the next band edge in screen pixels = (ceil(b) - b) / fwidth(b), b = unclamped band
  *     coordinate; line = 1 - distance / width, only for real edges, outside cast shadows, times mask and intensity.
- *  7. Final color: BaseColor * (lerp(Shadow, Light, Light Mask + line * (1 - color blend) / Bands) + bounce)
- *     + specular + rim, then lerp toward Edge Line Color by line * color blend.
+ *  7. Final color: BaseColor * (lerp(Shadow, Light, Light Mask + line * (1 - color blend) / Bands) * cast tint
+ *     + bounce) + specular + rim, then lerp toward Edge Line Color by line * color blend. The cast tint multiplies
+ *     the lit side by Cast Shadow Color inside cast shadows (by Cast Shadow Color Blend), like the blob shadow.
  *
  * Outputs
  *  0 Emissive       final color, for an Unlit material's Emissive Color
@@ -112,10 +115,13 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	// 2c. Whole bands passed + the ramp of the current one, back to 0-1
 	int32 LightMask = Compiler->Div(Compiler->Add(Compiler->Floor(BandPos), BandStep), BandsArg);
 
-	// 2d. Cast shadows darken it
-	if (IsConnected(Shadow))
+	// 2d. Cast shadows darken it (the mask without them is kept for blob-style cast shadow color, 7a)
+	const bool bHasShadow = IsConnected(Shadow);
+	const int32 FormMask = LightMask;
+	const int32 CastLit = bHasShadow ? Compiler->Saturate(Shadow.Compile(Compiler)) : INDEX_NONE;	// 1 = outside cast shadows
+	if (bHasShadow)
 	{
-		LightMask = Compiler->Mul(LightMask, Compiler->Saturate(Shadow.Compile(Compiler)));
+		LightMask = Compiler->Mul(LightMask, CastLit);
 	}
 	if (OutputIndex == VrrToonShading::LightMask)
 	{
@@ -199,9 +205,9 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 			Compiler->Saturate(Compiler->Sub(BandsArg, NextEdge))));
 
 		// 6e. No line inside cast shadows (the terminator isn't visible there), then breakup and intensity
-		if (IsConnected(Shadow))
+		if (bHasShadow)
 		{
-			EdgeLine = Compiler->Mul(EdgeLine, Compiler->Saturate(Shadow.Compile(Compiler)));
+			EdgeLine = Compiler->Mul(EdgeLine, CastLit);
 		}
 		if (IsConnected(EdgeLineMask))
 		{
@@ -224,15 +230,26 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	//     light added to that lighting before it multiplies the base color (so it tints like real light does).
 	//     The edge line lifts the shadow side toward the next band's tone (one band = 1 / Bands of the mask).
 	//     With a color blend, that share of the line is painted in Edge Line Color at the end (7c) instead.
+	//     Cast Shadow Color Blend b: the mask keeps 1 - b of the cast shadow, and the other b becomes a multiply by
+	//     Cast Shadow Color on the lit side only (the shadow side is already shadow toned), the way the blob shadow's
+	//     Modulate box multiplies the floor.
 	const bool bEdgeColorOn = bEdgeLineOn && (EdgeLineColorBlend > 0.0f || IsConnected(EdgeLineColorBlendIn));
 	const int32 ColorBlendArg = bEdgeColorOn ? Compiler->Saturate(InputOr(Compiler, EdgeLineColorBlendIn, EdgeLineColorBlend)) : INDEX_NONE;
-	int32 DiffuseMask = LightMask;
+	const bool bCastColorOn = bHasShadow && (CastShadowColorBlend > 0.0f || IsConnected(CastShadowColorBlendIn));
+	const int32 CastBlendArg = bCastColorOn ? Compiler->Saturate(InputOr(Compiler, CastShadowColorBlendIn, CastShadowColorBlend)) : INDEX_NONE;
+	int32 DiffuseMask = bCastColorOn ? Compiler->Lerp(LightMask, FormMask, CastBlendArg) : LightMask;
 	if (bEdgeLineOn)
 	{
 		const int32 ToneLine = bEdgeColorOn ? Compiler->Mul(EdgeLine, Compiler->Sub(One, ColorBlendArg)) : EdgeLine;
-		DiffuseMask = Compiler->Saturate(Compiler->Add(LightMask, Compiler->Div(ToneLine, BandsArg)));
+		DiffuseMask = Compiler->Saturate(Compiler->Add(DiffuseMask, Compiler->Div(ToneLine, BandsArg)));
 	}
 	int32 Lighting = Compiler->Lerp(ShadowColorArg, LightColorArg, DiffuseMask);
+	if (bCastColorOn)
+	{
+		const int32 CastColorArg = Float3Or(Compiler, CastShadowColorIn, ToVector(CastShadowColor));
+		const int32 CastAmount = Compiler->Mul(Compiler->Mul(Compiler->Sub(One, CastLit), CastBlendArg), FormMask);
+		Lighting = Compiler->Mul(Lighting, Compiler->Lerp(Compiler->Constant3(1.0f, 1.0f, 1.0f), CastColorArg, CastAmount));
+	}
 	if (bBounceOn)
 	{
 		const int32 BounceColorArg = Float3Or(Compiler, BounceColorIn, ToVector(BounceColor));

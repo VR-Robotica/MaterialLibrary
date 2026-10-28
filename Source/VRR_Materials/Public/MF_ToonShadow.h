@@ -17,6 +17,9 @@ class UTexture;
  *   ShadowRight   = right axis (xyz), map resolution (w)
  *   ShadowUp      = up axis (xyz)
  *   ShadowForward = direction the capture looks, away from the light (xyz)
+ *
+ * Distortion (cm) makes the shadow edges ripple slightly with world-space noise, like Vrr Blob Shadow's edge.
+ * Feed Time In the same stepped boil clock as the outlines (MF_ToonLit does) so they move together.
  */
 UCLASS(collapsecategories, hidecategories=Object)
 class VRR_MATERIALS_API UMaterialExpressionVrrToonShadow : public UMaterialExpressionVrrBase
@@ -41,6 +44,13 @@ public:
 	/** World-space normal used to push the sample point off the surface. Defaults to the mesh normal. */
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World-space normal for the normal offset. Defaults to the mesh normal"))
 	FExpressionInput Normal;
+
+	/** Clock for the distortion, e.g. Vrr Stepped Time so it steps like the outline boil. Defaults to game time. */
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Clock for the distortion, e.g. Vrr Stepped Time so it steps like the outline. Defaults to game time"))
+	FExpressionInput TimeIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Distortion' if not specified"))
+	FExpressionInput DistortionIn;
 
 	/** Depth map written by AVrr_ToonShadowCaster (an R32f render target). */
 	UPROPERTY(EditAnywhere, Category = "Shadow")
@@ -73,6 +83,21 @@ public:
 	/** Fraction of the map near its border where shadows fade out, so the edge of the covered area isn't visible. */
 	UPROPERTY(EditAnywhere, Category = "Shadow", meta = (ClampMin = "0.001", ClampMax = "0.5"))
 	float EdgeFade = 0.1f;
+
+	/**
+	 * How far shadow edges wobble, in cm: the map is read at a point pushed around by smooth noise, so edges ripple
+	 * like a hand-drawn shadow (like Vrr Blob Shadow's edge). 0 = straight edges (compiled out if not wired).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Distortion", meta = (OverridingInputProperty = "DistortionIn", ClampMin = "0.0", UIMax = "20.0"))
+	float Distortion = 0.0f;
+
+	/** Wobbles per meter across the shadow. Higher = smaller, busier ripples. */
+	UPROPERTY(EditAnywhere, Category = "Distortion", meta = (ClampMin = "0.0", UIMax = "10.0"))
+	float DistortionScale = 1.5f;
+
+	/** How fast the wobble pattern moves per unit of Time. 0 = static. */
+	UPROPERTY(EditAnywhere, Category = "Distortion", meta = (ClampMin = "0.0", UIMax = "8.0"))
+	float DistortionSpeed = 2.0f;
 
 	// Lets the material track the shadow map so it gets cooked with it
 	virtual UObject* GetReferencedTexture() const override;

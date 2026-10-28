@@ -12,7 +12,10 @@
  *   LightMask = NdotL above Threshold, split into Bands with a Softness-wide edge, times Shadow
  *   Bounce    = flat band where dot(N, BounceDirection) > BounceThreshold, shadow side only (optional)
  *   EdgeLine  = thin light line on the shadow side of each band edge, EdgeLineWidth px wide (optional)
- *   Diffuse   = BaseColor * (lerp(ShadowColor, LightColor, LightMask + EdgeLine * (1 - EdgeLineColorBlend) / Bands) + BounceColor * Bounce * BounceIntensity)
+ *   Lighting  = lerp(ShadowColor, LightColor, LightMask + EdgeLine * (1 - EdgeLineColorBlend) / Bands)
+ *   Lighting *= lerp(1, CastShadowColor, (1 - Shadow) * CastShadowColorBlend * LightMask without Shadow)
+ *               (blob-style cast shadows, optional: that share of Shadow is then left out of LightMask above)
+ *   Diffuse   = BaseColor * (Lighting + BounceColor * Bounce * BounceIntensity)
  *   Specular  = smoothstep around NdotH = 1 - SpecularSize, lit side only
  *   Rim       = smoothstep around (1 - NdotV) = 1 - RimWidth
  *   Emissive  = Diffuse + Specular * LightColor * SpecularIntensity + Rim * RimColor * RimIntensity
@@ -50,6 +53,12 @@ public:
 	/** 0-1 cast shadow (e.g. from Vrr Toon Shadow). 0 = in shadow. Defaults to fully lit. */
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0-1 cast shadow, 0 = in shadow. Defaults to fully lit"))
 	FExpressionInput Shadow;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'CastShadowColor' if not specified"))
+	FExpressionInput CastShadowColorIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'CastShadowColorBlend' if not specified"))
+	FExpressionInput CastShadowColorBlendIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Threshold' if not specified"))
 	FExpressionInput ThresholdIn;
@@ -125,6 +134,20 @@ public:
 	/** Tint applied to BaseColor in shadow. Acts as the ambient light. */
 	UPROPERTY(EditAnywhere, Category = "Light", meta = (OverridingInputProperty = "ShadowColorIn"))
 	FLinearColor ShadowColor = FLinearColor(0.32f, 0.3f, 0.42f);
+
+	/**
+	 * Color a cast shadow (Shadow input) multiplies the lit surface by, like Vrr Blob Shadow multiplies the floor.
+	 * Only used with Cast Shadow Color Blend above 0. Darker = stronger shadow.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Light", meta = (OverridingInputProperty = "CastShadowColorIn"))
+	FLinearColor CastShadowColor = FLinearColor(0.28f, 0.45f, 0.49f);
+
+	/**
+	 * How cast shadows are colored. 0 = like the shading's own shadow side (Shadow Color), 1 = the lit color
+	 * multiplied by Cast Shadow Color (matches the blob shadow). Surfaces already on the shadow side keep their tone.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Light", meta = (OverridingInputProperty = "CastShadowColorBlendIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float CastShadowColorBlend = 0.0f;
 
 	// Shading bands
 

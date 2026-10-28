@@ -34,7 +34,6 @@
 
 #include "MaterialCompiler.h"
 #include "MaterialSceneTextureId.h"
-#include "Materials/MaterialExpressionNoise.h"
 #include "VrrMaterialMath.h"
 
 namespace VrrBlobShadow
@@ -84,8 +83,7 @@ int32 UMaterialExpressionVrrBlobShadow::Compile(FMaterialCompiler* Compiler, int
 	const int32 NoisePos = Compiler->AppendVector(
 		Compiler->Mul(Direction, InputOr(Compiler, NoiseScaleIn, NoiseScale)),
 		Compiler->Mul(Compiler->ValidCast(Time, MCT_Float1), InputOr(Compiler, NoiseSpeedIn, NoiseSpeed)));
-	const int32 Noise = Compiler->Noise(NoisePos, EPositionOrigin::Absolute, 1.0f, 1, NOISEFUNCTION_GradientALU,
-		false, 2, -1.0f, 1.0f, 2.0f, Zero, false, 512);
+	const int32 Noise = GradientNoise(Compiler, NoisePos, 2);
 	const int32 Wobbled = Compiler->Sub(Radius, Compiler->Mul(Noise, InputOr(Compiler, NoiseAmountIn, NoiseAmount)));
 
 	// 2b. Hard edge, anti-aliased over EdgeSoftness pixels: (1 - r) / (r change per pixel), centered on the edge
