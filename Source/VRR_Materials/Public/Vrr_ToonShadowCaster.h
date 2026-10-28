@@ -28,6 +28,28 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	virtual bool ShouldTickIfViewportsOnly() const override { return true; }
 
+	/**
+	 * Leaves Actor out of the shadow map, so it stops casting toon shadows (it still receives them).
+	 * Include Attached also covers actors attached to it (gear spawned as separate actors). Safe to call twice.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Toon Shadow", meta = (AdvancedDisplay = "bIncludeAttached"))
+	void AddIgnoredActor(AActor* Actor, bool bIncludeAttached = true);
+
+	/** Puts Actor (and, with Include Attached, the actors attached to it) back into the shadow map. */
+	UFUNCTION(BlueprintCallable, Category = "Toon Shadow", meta = (AdvancedDisplay = "bIncludeAttached"))
+	void RemoveIgnoredActor(AActor* Actor, bool bIncludeAttached = true);
+
+	/** Actors currently left out of the shadow map. */
+	UFUNCTION(BlueprintPure, Category = "Toon Shadow")
+	TArray<AActor*> GetIgnoredActors() const;
+
+	/**
+	 * Add Ignored Actor on every Toon Shadow Caster in the world (does nothing when there is none).
+	 * Lets an actor opt out from its own Begin Play without finding the caster first.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "Toon Shadow", meta = (WorldContext = "WorldContextObject", AdvancedDisplay = "bIncludeAttached"))
+	static void IgnoreInToonShadows(const UObject* WorldContextObject, AActor* Actor, bool bIncludeAttached = true);
+
 protected:
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
@@ -69,7 +91,10 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Toon Shadow", meta = (ClampMin = "0.0", UIMax = "2.0", EditCondition = "bFollowPlayer"))
 	float ViewOffsetSmoothing = 0.25f;
 
-	/** Actors left out of the shadow map, so they never cast toon shadows (e.g. one-sided planes or helpers above the level). */
+	/**
+	 * Actors left out of the shadow map, so they never cast toon shadows (e.g. one-sided planes or helpers above the
+	 * level). At runtime, change it with Add / Remove Ignored Actor: edits to the array itself don't reach the capture.
+	 */
 	UPROPERTY(EditAnywhere, Category = "Toon Shadow")
 	TArray<TObjectPtr<AActor>> IgnoredActors;
 
@@ -89,4 +114,10 @@ private:
 
 	/** Sets ShadowOrigin.w to 0 so toon materials stop sampling the map. */
 	void DisableShadows();
+
+	/** Actor plus, optionally, everything attached to it (recursively). */
+	static TArray<AActor*> GatherActors(AActor* Actor, bool bIncludeAttached);
+
+	/** Drops destroyed entries and hands the list to the capture. */
+	void ApplyIgnoredActors();
 };

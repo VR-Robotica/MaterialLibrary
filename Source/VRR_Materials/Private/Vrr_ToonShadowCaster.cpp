@@ -23,7 +23,9 @@
 
 #include "Components/SceneCaptureComponent2D.h"
 #include "Engine/TextureRenderTarget2D.h"
+#include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/KismetMaterialLibrary.h"
@@ -89,10 +91,78 @@ void AVrr_ToonShadowCaster::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 	Capture->TextureTarget = ShadowTarget;
-	Capture->HiddenActors = IgnoredActors;
+	ApplyIgnoredActors();
 
 	// Editor viewports that aren't realtime don't tick actors, so also update when placed, moved or edited
 	UpdateCapture();
+}
+
+void AVrr_ToonShadowCaster::AddIgnoredActor(AActor* Actor, bool bIncludeAttached)
+{
+	for (AActor* Each : GatherActors(Actor, bIncludeAttached))
+	{
+		IgnoredActors.AddUnique(Each);
+	}
+	ApplyIgnoredActors();
+}
+
+void AVrr_ToonShadowCaster::RemoveIgnoredActor(AActor* Actor, bool bIncludeAttached)
+{
+	for (AActor* Each : GatherActors(Actor, bIncludeAttached))
+	{
+		IgnoredActors.Remove(Each);
+	}
+	ApplyIgnoredActors();
+}
+
+TArray<AActor*> AVrr_ToonShadowCaster::GetIgnoredActors() const
+{
+	TArray<AActor*> Result;
+	for (AActor* Each : IgnoredActors)
+	{
+		if (IsValid(Each))
+		{
+			Result.Add(Each);
+		}
+	}
+	return Result;
+}
+
+void AVrr_ToonShadowCaster::IgnoreInToonShadows(const UObject* WorldContextObject, AActor* Actor, bool bIncludeAttached)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	if (!World || !Actor)
+	{
+		return;
+	}
+
+	for (TActorIterator<AVrr_ToonShadowCaster> It(World); It; ++It)
+	{
+		It->AddIgnoredActor(Actor, bIncludeAttached);
+	}
+}
+
+TArray<AActor*> AVrr_ToonShadowCaster::GatherActors(AActor* Actor, bool bIncludeAttached)
+{
+	TArray<AActor*> Actors;
+	if (IsValid(Actor))
+	{
+		Actors.Add(Actor);
+		if (bIncludeAttached)
+		{
+			TArray<AActor*> Attached;
+			Actor->GetAttachedActors(Attached, /*bResetArray=*/ true, /*bRecursivelyIncludeAttachedActors=*/ true);
+			Actors.Append(Attached);
+		}
+	}
+	return Actors;
+}
+
+void AVrr_ToonShadowCaster::ApplyIgnoredActors()
+{
+	// A respawned player leaves its destroyed pawn behind in the list
+	IgnoredActors.RemoveAll([](const TObjectPtr<AActor>& Each) { return !IsValid(Each); });
+	Capture->HiddenActors = IgnoredActors;
 }
 
 void AVrr_ToonShadowCaster::Tick(float DeltaSeconds)

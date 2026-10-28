@@ -12,7 +12,8 @@
  *   LightMask = NdotL above Threshold, split into Bands with a Softness-wide edge, times Shadow
  *   Bounce    = flat band where dot(N, BounceDirection) > BounceThreshold, shadow side only (optional)
  *   EdgeLine  = thin light line on the shadow side of each band edge, EdgeLineWidth px wide (optional)
- *   Lighting  = lerp(ShadowColor, LightColor, LightMask + EdgeLine * (1 - EdgeLineColorBlend) / Bands)
+ *   Metallic  = flat band on the shadow side, deeper than MetallicThreshold of it, times Metallic (optional)
+ *   Lighting  = lerp(ShadowColor, LightColor, max(LightMask, Metallic * 0.5) + EdgeLine * (1 - EdgeLineColorBlend) / Bands)
  *   Lighting *= lerp(1, CastShadowColor, (1 - Shadow) * CastShadowColorBlend * LightMask without Shadow)
  *               (blob-style cast shadows, optional: that share of Shadow is then left out of LightMask above)
  *   Diffuse   = BaseColor * (Lighting + BounceColor * Bounce * BounceIntensity)
@@ -88,6 +89,12 @@ public:
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineColorBlend' if not specified"))
 	FExpressionInput EdgeLineColorBlendIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Metallic' if not specified"))
+	FExpressionInput MetallicIn;
+
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'MetallicThreshold' if not specified"))
+	FExpressionInput MetallicThresholdIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'SpecularSize' if not specified"))
 	FExpressionInput SpecularSizeIn;
@@ -182,6 +189,22 @@ public:
 	 *  0 compiles the color path out unless the pin is wired. */
 	UPROPERTY(EditAnywhere, Category = "Edge Line", meta = (OverridingInputProperty = "EdgeLineColorBlendIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float EdgeLineColorBlend = 0.0f;
+
+	// Metallic
+
+	/**
+	 * Fake metallic reflection: one extra flat band on the shadow side, halfway between the lit and shadow tones
+	 * (at 1). 0 turns it off (and compiles it out unless the pin is wired).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Metallic", meta = (OverridingInputProperty = "MetallicIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float Metallic = 0.0f;
+
+	/**
+	 * Where the metallic band starts, as a share of the shadow side measured from the terminator: 0 = the band covers
+	 * the whole shadow side, 0.5 = its deeper half (a dark strip stays along the terminator), 1 = nothing.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Metallic", meta = (OverridingInputProperty = "MetallicThresholdIn", ClampMin = "0.0", ClampMax = "1.0"))
+	float MetallicThreshold = 0.3f;
 
 	// Specular
 

@@ -19,6 +19,10 @@
  *                 skips cast shadows, and Edge Line Mask can break it up (e.g. noise). Edge Line Color Blend
  *                 instead paints the line in Edge Line Color (white by default), on top of everything, so it is
  *                 bright enough for post-process halation / bloom to glow around it.
+ *   - Metallic:   an optional extra flat band on the shadow side (fake metallic reflection), halfway between the lit
+ *                 and shadow tones. Metallic Threshold sets how much of the shadow side it covers, from the far side
+ *                 back toward the terminator, so a dark strip can stay along the terminator like on polished metal.
+ *                 It follows the surface's form (not cast shadows), and is compiled out while Metallic is 0.
  *  Band Offset shifts NdotL (and the bounce dot) before banding. Inside a flat band that changes nothing, so it only
  *  moves the edges: feed it small animated noise and the terminator wobbles like hand-drawn shading.
  *  Each mask is also an output, so materials can mix them their own way. Cast shadows come in through Shadow
@@ -35,9 +39,12 @@
  *  5. Bounce mask: smoothstep around dot(N, BounceDirection) (+ Band Offset) = BounceThreshold, times (1 - Light Mask).
  *  6. Edge line: distance below the next band edge in screen pixels = (ceil(b) - b) / fwidth(b), b = unclamped band
  *     coordinate; line = 1 - distance / width, only for real edges, outside cast shadows, times mask and intensity.
- *  7. Final color: BaseColor * (lerp(Shadow, Light, Light Mask + line * (1 - color blend) / Bands) * cast tint
- *     + bounce) + specular + rim, then lerp toward Edge Line Color by line * color blend. The cast tint multiplies
- *     the lit side by Cast Shadow Color inside cast shadows (by Cast Shadow Color Blend), like the blob shadow.
+ *  7. Metallic band: NdotL (+ Band Offset) below Threshold - Metallic Threshold * (Threshold + 1) (that share of the
+ *     shadow side's NdotL range), soft edge as the light bands, on the form's shadow side, times Metallic.
+ *  8. Final color: BaseColor * (lerp(Shadow, Light, max(Light Mask, metallic / 2) + line * (1 - color blend) / Bands)
+ *     * cast tint + bounce) + specular + rim, then lerp toward Edge Line Color by line * color blend. The cast tint
+ *     multiplies the lit side by Cast Shadow Color inside cast shadows (by Cast Shadow Color Blend), like the blob
+ *     shadow.
  *
  * Outputs
  *  0 Emissive       final color, for an Unlit material's Emissive Color
@@ -46,6 +53,7 @@
  *  3 Rim Mask       0-1
  *  4 Bounce Mask    0-1 (0 everywhere while the bounce is off)
  *  5 Edge Line Mask 0-1 times intensity (0 everywhere while the line is off)
+ *  6 Metallic Mask  0-1 times Metallic (0 everywhere while metallic is off)
  */
 
 #include "MF_ToonShading.h"
@@ -55,7 +63,7 @@
 
 namespace VrrToonShading
 {
-	enum EOutput : int32 { Emissive = 0, LightMask = 1, SpecularMask = 2, RimMask = 3, BounceMask = 4, EdgeLineMask = 5 };
+	enum EOutput : int32 { Emissive = 0, LightMask = 1, SpecularMask = 2, RimMask = 3, BounceMask = 4, EdgeLineMask = 5, MetallicMask = 6 };
 
 	FVector3f ToVector(const FLinearColor& Color) { return FVector3f(Color.R, Color.G, Color.B); }
 }
@@ -63,7 +71,7 @@ namespace VrrToonShading
 UMaterialExpressionVrrToonShading::UMaterialExpressionVrrToonShading(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Toon Shading"), { TEXT("Emissive"), TEXT("Light Mask"), TEXT("Specular Mask"), TEXT("Rim Mask"), TEXT("Bounce Mask"), TEXT("Edge Line Mask") });
+	InitNode(TEXT("Vrr Toon Shading"), { TEXT("Emissive"), TEXT("Light Mask"), TEXT("Specular Mask"), TEXT("Rim Mask"), TEXT("Bounce Mask"), TEXT("Edge Line Mask"), TEXT("Metallic Mask") });
 }
 
 #if WITH_EDITOR
@@ -115,7 +123,7 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	// 2c. Whole bands passed + the ramp of the current one, back to 0-1
 	int32 LightMask = Compiler->Div(Compiler->Add(Compiler->Floor(BandPos), BandStep), BandsArg);
 
-	// 2d. Cast shadows darken it (the mask without them is kept for blob-style cast shadow color, 7a)
+	// 2d. Cast shadows darken it (the mask without them is kept for blob-style cast shadow color, 8a)
 	const bool bHasShadow = IsConnected(Shadow);
 	const int32 FormMask = LightMask;
 	const int32 CastLit = bHasShadow ? Compiler->Saturate(Shadow.Compile(Compiler)) : INDEX_NONE;	// 1 = outside cast shadows
@@ -220,16 +228,39 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 		return EdgeLine;
 	}
 
-	// 7. Final color
+	// 7. Metallic band: skipped entirely (mask 0) while it's off
+	const bool bMetallicOn = Metallic > 0.0f || IsConnected(MetallicIn);
+	int32 MetallicMask = Compiler->Constant(0.0f);
+	if (bMetallicOn)
+	{
+		// 7a. The shadow side spans NdotL -1 .. Threshold; the band takes the part deeper than Metallic Threshold of it
+		const int32 ShadowRange = Compiler->Max(Compiler->Add(ThresholdArg, One), Compiler->Constant(0.001f));
+		const int32 Coverage = Compiler->Saturate(InputOr(Compiler, MetallicThresholdIn, MetallicThreshold));
+		const int32 Edge = Compiler->Sub(ThresholdArg, Compiler->Mul(Coverage, ShadowRange));
+
+		// 7b. Below the edge, with the light bands' soft edge (Band Offset wobbles it the same way)
+		MetallicMask = Compiler->Sub(One,
+			Compiler->SmoothStep(Compiler->Sub(Edge, SoftnessArg), Compiler->Add(Edge, SoftnessArg), BandNdotL));
+
+		// 7c. Only on the form's shadow side (not where a cast shadow falls on the lit side), times strength
+		MetallicMask = Compiler->Mul(MetallicMask, Compiler->Sub(One, FormMask));
+		MetallicMask = Compiler->Mul(MetallicMask, Compiler->Saturate(InputOr(Compiler, MetallicIn, Metallic)));
+	}
+	if (OutputIndex == VrrToonShading::MetallicMask)
+	{
+		return MetallicMask;
+	}
+
+	// 8. Final color
 	const int32 BaseColorArg = Float3Or(Compiler, BaseColorIn, ToVector(BaseColor));
 	const int32 LightColorArg = Float3Or(Compiler, LightColorIn, ToVector(LightColor));
 	const int32 ShadowColorArg = Float3Or(Compiler, ShadowColorIn, ToVector(ShadowColor));
 	const int32 RimColorArg = Float3Or(Compiler, RimColorIn, ToVector(RimColor));
 
-	// 7a. Diffuse: base color lit by the light color, or tinted by the shadow color (the ambient), plus the bounce
+	// 8a. Diffuse: base color lit by the light color, or tinted by the shadow color (the ambient), plus the bounce
 	//     light added to that lighting before it multiplies the base color (so it tints like real light does).
 	//     The edge line lifts the shadow side toward the next band's tone (one band = 1 / Bands of the mask).
-	//     With a color blend, that share of the line is painted in Edge Line Color at the end (7c) instead.
+	//     With a color blend, that share of the line is painted in Edge Line Color at the end (8c) instead.
 	//     Cast Shadow Color Blend b: the mask keeps 1 - b of the cast shadow, and the other b becomes a multiply by
 	//     Cast Shadow Color on the lit side only (the shadow side is already shadow toned), the way the blob shadow's
 	//     Modulate box multiplies the floor.
@@ -238,6 +269,11 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	const bool bCastColorOn = bHasShadow && (CastShadowColorBlend > 0.0f || IsConnected(CastShadowColorBlendIn));
 	const int32 CastBlendArg = bCastColorOn ? Compiler->Saturate(InputOr(Compiler, CastShadowColorBlendIn, CastShadowColorBlend)) : INDEX_NONE;
 	int32 DiffuseMask = bCastColorOn ? Compiler->Lerp(LightMask, FormMask, CastBlendArg) : LightMask;
+	// The metallic band lifts its share of the shadow side to the halfway tone (max, so it never darkens anything)
+	if (bMetallicOn)
+	{
+		DiffuseMask = Compiler->Max(DiffuseMask, Compiler->Mul(MetallicMask, Compiler->Constant(0.5f)));
+	}
 	if (bEdgeLineOn)
 	{
 		const int32 ToneLine = bEdgeColorOn ? Compiler->Mul(EdgeLine, Compiler->Sub(One, ColorBlendArg)) : EdgeLine;
@@ -257,13 +293,13 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 		Lighting = Compiler->Add(Lighting, Compiler->Mul(BounceColorArg, BounceStrength));
 	}
 	const int32 Diffuse = Compiler->Mul(BaseColorArg, Lighting);
-	// 7b. Highlight and rim are added on top
+	// 8b. Highlight and rim are added on top
 	const int32 Specular = Compiler->Mul(LightColorArg, Compiler->Mul(SpecularMask, InputOr(Compiler, SpecularIntensityIn, SpecularIntensity)));
 	const int32 Rim = Compiler->Mul(RimColorArg, Compiler->Mul(RimMask, InputOr(Compiler, RimIntensityIn, RimIntensity)));
 
 	int32 Result = Compiler->Add(Diffuse, Compiler->Add(Specular, Rim));
 
-	// 7c. Colored edge line painted over the result (white by default, so halation / bloom catch it)
+	// 8c. Colored edge line painted over the result (white by default, so halation / bloom catch it)
 	if (bEdgeColorOn)
 	{
 		const int32 EdgeColorArg = Float3Or(Compiler, EdgeLineColorIn, ToVector(EdgeLineColor));
