@@ -25,10 +25,10 @@ public:
 	UMaterialExpressionVrrTapeGrade(const FObjectInitializer& ObjectInitializer);
 
 	/** The picture (e.g. Vrr Tape Signal). */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput Color;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV, usually Vrr Tape Warp's UV, so the hue drift follows the warped picture. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV, usually Vrr Tape Warp's UV, so the hue drift follows the warped picture. Defaults to this pixel"))
 	FExpressionInput UV;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Wear' if not specified"))

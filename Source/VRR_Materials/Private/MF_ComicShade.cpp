@@ -60,7 +60,11 @@ namespace VrrComicShade
 UMaterialExpressionVrrComicShade::UMaterialExpressionVrrComicShade(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Comic Shade"), { TEXT("Color"), TEXT("Hatch"), TEXT("Dots") });
+	InitNode(TEXT("Vrr Comic Shade"), {
+		{ TEXT("Color"), MCT_Float3 },
+		{ TEXT("Hatch"), MCT_Float1 },
+		{ TEXT("Dots"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR

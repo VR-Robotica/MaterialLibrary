@@ -16,7 +16,7 @@
  *
  * Outputs
  *  0 Color  the picture with grain
- *  1 Grain  the signed -1..1 grain on its own
+ *  1 Grain  the signed -1..1 grain on its own (S, or V3 when Colored)
  */
 
 #include "MF_FilmGrain.h"
@@ -32,7 +32,12 @@ namespace VrrFilmGrain
 UMaterialExpressionVrrFilmGrain::UMaterialExpressionVrrFilmGrain(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Film Grain"), { TEXT("Color"), TEXT("Grain") });
+	InitNode(TEXT("Vrr Film Grain"), { { TEXT("Color"), MCT_Float3 }, { TEXT("Grain"), MCT_Float1 } });
+}
+
+void UMaterialExpressionVrrFilmGrain::UpdateOutputTypes()
+{
+	SetOutputType(VrrFilmGrain::Grain, bColored ? MCT_Float3 : MCT_Float1);
 }
 
 #if WITH_EDITOR

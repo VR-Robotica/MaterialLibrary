@@ -33,7 +33,7 @@ public:
 	// Inputs
 
 	/** Clock for the edge wobble, e.g. Vrr Stepped Time (held steps like the outline boil). Defaults to game time. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Clock for the edge wobble, e.g. Vrr Stepped Time so it steps like the outline. Defaults to game time"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Clock for the edge wobble, e.g. Vrr Stepped Time so it steps like the outline. Defaults to game time"))
 	FExpressionInput TimeIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'NoiseAmount' if not specified"))

@@ -39,7 +39,7 @@ public:
 	FExpressionInput BaseColorIn;
 
 	/** Surface normal. Defaults to the mesh normal. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Normal map or world normal (see 'Normal Is Tangent Space'). Defaults to the mesh normal"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "false", ToolTip = "Normal map or world normal (see 'Normal Is Tangent Space'). Defaults to the mesh normal"))
 	FExpressionInput Normal;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World-space direction towards the light. Defaults to 'LightDirection' if not specified"))
@@ -52,7 +52,7 @@ public:
 	FExpressionInput ShadowColorIn;
 
 	/** 0-1 cast shadow (e.g. from Vrr Toon Shadow). 0 = in shadow. Defaults to fully lit. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0-1 cast shadow, 0 = in shadow. Defaults to fully lit"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "0-1 cast shadow, 0 = in shadow. Defaults to fully lit"))
 	FExpressionInput Shadow;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'CastShadowColor' if not specified"))
@@ -71,7 +71,7 @@ public:
 	FExpressionInput BandsIn;
 
 	/** Per-pixel shift of the band edges, in NdotL units (e.g. small animated noise for a hand-drawn wobble). Defaults to 0. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Per-pixel shift of the band edges in NdotL units, e.g. noise * 0.05 for a hand-drawn wobble. Moves the light and bounce band edges only. Defaults to 0"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Per-pixel shift of the band edges in NdotL units, e.g. noise * 0.05 for a hand-drawn wobble. Moves the light and bounce band edges only. Defaults to 0"))
 	FExpressionInput BandOffset;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineWidth' if not specified"))
@@ -81,7 +81,7 @@ public:
 	FExpressionInput EdgeLineIntensityIn;
 
 	/** 0-1 multiplier along the edge line, e.g. noise, so it breaks up like a hand-painted cel. Defaults to 1. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0-1 multiplier along the edge line (e.g. noise) so it breaks up and varies like a hand-painted cel. Defaults to 1"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "0-1 multiplier along the edge line (e.g. noise) so it breaks up and varies like a hand-painted cel. Defaults to 1"))
 	FExpressionInput EdgeLineMask;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'EdgeLineColor' if not specified"))

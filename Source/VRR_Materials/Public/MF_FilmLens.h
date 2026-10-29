@@ -23,7 +23,7 @@ class VRR_MATERIALS_API UMaterialExpressionVrrFilmLens : public UMaterialExpress
 public:
 	UMaterialExpressionVrrFilmLens(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV to read the scene at. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV to read the scene at. Defaults to this pixel"))
 	FExpressionInput UV;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Chromatic Aberration' if not specified"))
@@ -32,7 +32,7 @@ public:
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Softness' if not specified"))
 	FExpressionInput SoftnessIn;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Sideways red/blue split in pixels at 1080p (red right, blue left), e.g. Vrr Tape Warp's Color Split. None if not connected"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Sideways red/blue split in pixels at 1080p (red right, blue left), e.g. Vrr Tape Warp's Color Split. None if not connected"))
 	FExpressionInput ChannelShift;
 
 	/** Color split in the screen corners, as a fraction of the screen (0.004 = 0.4%, about 4 pixels at 1080p). 0 = off. */

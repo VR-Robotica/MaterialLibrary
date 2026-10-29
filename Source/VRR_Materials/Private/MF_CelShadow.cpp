@@ -47,7 +47,7 @@ namespace VrrCelShadow
 UMaterialExpressionVrrCelShadow::UMaterialExpressionVrrCelShadow(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Cel Shadow"), { TEXT("Color"), TEXT("Mask") });
+	InitNode(TEXT("Vrr Cel Shadow"), { { TEXT("Color"), MCT_Float3 }, { TEXT("Mask"), MCT_Float1 } });
 }
 
 #if WITH_EDITOR

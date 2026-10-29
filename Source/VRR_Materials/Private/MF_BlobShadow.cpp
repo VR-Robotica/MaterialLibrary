@@ -51,7 +51,12 @@ namespace VrrBlobShadow
 UMaterialExpressionVrrBlobShadow::UMaterialExpressionVrrBlobShadow(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Blob Shadow"), { TEXT("Mask"), TEXT("Box Position"), TEXT("World Position"), TEXT("World Normal") });
+	InitNode(TEXT("Vrr Blob Shadow"), {
+		{ TEXT("Mask"), MCT_Float1 },
+		{ TEXT("Box Position"), MCT_Float3 },
+		{ TEXT("World Position"), MCT_Float3 },
+		{ TEXT("World Normal"), MCT_Float3 }
+	});
 }
 
 #if WITH_EDITOR

@@ -22,7 +22,7 @@ class VRR_MATERIALS_API UMaterialExpressionVrrHalation : public UMaterialExpress
 public:
 	UMaterialExpressionVrrHalation(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV to read the scene at. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV to read the scene at. Defaults to this pixel"))
 	FExpressionInput UV;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Threshold' if not specified"))

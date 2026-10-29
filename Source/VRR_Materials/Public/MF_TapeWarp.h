@@ -25,7 +25,7 @@ class VRR_MATERIALS_API UMaterialExpressionVrrTapeWarp : public UMaterialExpress
 public:
 	UMaterialExpressionVrrTapeWarp(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV to warp. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV to warp. Defaults to this pixel"))
 	FExpressionInput UV;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Line Jitter' if not specified"))

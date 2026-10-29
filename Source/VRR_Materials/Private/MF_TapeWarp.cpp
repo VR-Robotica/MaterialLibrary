@@ -35,7 +35,11 @@ namespace VrrTapeWarp
 UMaterialExpressionVrrTapeWarp::UMaterialExpressionVrrTapeWarp(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Tape Warp"), { TEXT("UV"), TEXT("Glitch"), TEXT("Color Split") });
+	InitNode(TEXT("Vrr Tape Warp"), {
+		{ TEXT("UV"), MCT_Float2 },
+		{ TEXT("Glitch"), MCT_Float1 },
+		{ TEXT("Color Split"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR

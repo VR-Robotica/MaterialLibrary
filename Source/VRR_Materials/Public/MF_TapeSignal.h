@@ -26,13 +26,13 @@ public:
 	UMaterialExpressionVrrTapeSignal(const FObjectInitializer& ObjectInitializer);
 
 	/** The picture (e.g. Vrr Film Lens). */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput Color;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV, usually Vrr Tape Warp's UV. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV, usually Vrr Tape Warp's UV. Defaults to this pixel"))
 	FExpressionInput UV;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0-1 glitch band mask (Vrr Tape Warp's Glitch): more static and dropouts inside it"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "0-1 glitch band mask (Vrr Tape Warp's Glitch): more static and dropouts inside it"))
 	FExpressionInput Glitch;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Chroma Bleed' if not specified"))

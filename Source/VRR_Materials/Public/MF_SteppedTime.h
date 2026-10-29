@@ -23,7 +23,7 @@ class VRR_MATERIALS_API UMaterialExpressionVrrSteppedTime : public UMaterialExpr
 public:
 	UMaterialExpressionVrrSteppedTime(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Seconds to step. Defaults to the game time (or real time with 'Ignore Pause')"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Seconds to step. Defaults to the game time (or real time with 'Ignore Pause')"))
 	FExpressionInput TimeIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Frame Rate' if not specified"))

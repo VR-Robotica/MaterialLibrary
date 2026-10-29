@@ -20,7 +20,7 @@ public:
 	UMaterialExpressionVrrHitFlash(const FObjectInitializer& ObjectInitializer);
 
 	/** World time of the last hit (usually a scalar parameter). */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "true"))
 	FExpressionInput HitTime;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Color' if not specified"))

@@ -23,10 +23,10 @@ public:
 	UMaterialExpressionVrrFilmGrain(const FObjectInitializer& ObjectInitializer);
 
 	/** The color to add grain to (e.g. Vrr Film Lens + Vrr Halation). */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput Color;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV, places the grain. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV, places the grain. Defaults to this pixel"))
 	FExpressionInput UV;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Amount' if not specified"))
@@ -35,7 +35,7 @@ public:
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Size' if not specified"))
 	FExpressionInput SizeIn;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Frame number that picks the grain pattern (e.g. Vrr Stepped Time's Frame). Defaults to stepping at 'Frame Rate'"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Frame number that picks the grain pattern (e.g. Vrr Stepped Time's Frame). Defaults to stepping at 'Frame Rate'"))
 	FExpressionInput Frame;
 
 	/** Grain strength: how far a grain pushes the color (0.05 = 5% at mid gray). */
@@ -65,4 +65,8 @@ public:
 #if WITH_EDITOR
 	virtual int32 Compile(class FMaterialCompiler* Compiler, int32 OutputIndex) override;
 #endif
+
+protected:
+	/** Grain is one value, or one per channel when Colored. */
+	virtual void UpdateOutputTypes() override;
 };

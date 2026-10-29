@@ -31,7 +31,7 @@ namespace VrrTapeSignal
 UMaterialExpressionVrrTapeSignal::UMaterialExpressionVrrTapeSignal(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Tape Signal"), { TEXT("Color") });
+	InitNode(TEXT("Vrr Tape Signal"), { { TEXT("Color"), MCT_Float3 } });
 }
 
 #if WITH_EDITOR

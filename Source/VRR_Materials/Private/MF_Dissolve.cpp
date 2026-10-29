@@ -26,7 +26,11 @@ namespace VrrDissolve
 UMaterialExpressionVrrDissolve::UMaterialExpressionVrrDissolve(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Dissolve"), { TEXT("Opacity Mask"), TEXT("Edge Emissive"), TEXT("Edge Mask") });
+	InitNode(TEXT("Vrr Dissolve"), {
+		{ TEXT("Opacity Mask"), MCT_Float1 },
+		{ TEXT("Edge Emissive"), MCT_Float3 },
+		{ TEXT("Edge Mask"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR

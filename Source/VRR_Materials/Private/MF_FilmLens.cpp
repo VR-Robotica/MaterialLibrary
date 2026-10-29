@@ -28,7 +28,7 @@
 UMaterialExpressionVrrFilmLens::UMaterialExpressionVrrFilmLens(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Film Lens"), { TEXT("Color") });
+	InitNode(TEXT("Vrr Film Lens"), { { TEXT("Color"), MCT_Float3 } });
 }
 
 #if WITH_EDITOR

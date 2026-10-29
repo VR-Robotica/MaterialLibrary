@@ -26,7 +26,11 @@ namespace VrrSteppedTime
 UMaterialExpressionVrrSteppedTime::UMaterialExpressionVrrSteppedTime(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Stepped Time"), { TEXT("Time"), TEXT("Frame"), TEXT("Seed") });
+	InitNode(TEXT("Vrr Stepped Time"), {
+		{ TEXT("Time"), MCT_Float1 },
+		{ TEXT("Frame"), MCT_Float1 },
+		{ TEXT("Seed"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR

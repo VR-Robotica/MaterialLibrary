@@ -25,10 +25,10 @@ public:
 
 	// Inputs
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV to work at. Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV to work at. Defaults to this pixel"))
 	FExpressionInput UV;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Scene color to shadow. Defaults to PostProcessInput0"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "false", ToolTip = "Scene color to shadow. Defaults to PostProcessInput0"))
 	FExpressionInput SceneColorIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Float2, in 1080p pixels. Defaults to 'Offset' if not specified"))

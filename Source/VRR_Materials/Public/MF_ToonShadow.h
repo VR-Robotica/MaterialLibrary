@@ -29,28 +29,28 @@ class VRR_MATERIALS_API UMaterialExpressionVrrToonShadow : public UMaterialExpre
 public:
 	UMaterialExpressionVrrToonShadow(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V4", RequiredInput = "true"))
 	FExpressionInput ShadowOrigin;
 
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V4", RequiredInput = "true"))
 	FExpressionInput ShadowRight;
 
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput ShadowUp;
 
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput ShadowForward;
 
 	/** World position to test. Defaults to this pixel; Vrr Blob Shadow's World Position tests the ground under the blob. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World position to test. Defaults to this pixel's"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "false", ToolTip = "World position to test. Defaults to this pixel's"))
 	FExpressionInput WorldPositionIn;
 
 	/** World-space normal used to push the sample point off the surface. Defaults to the mesh normal. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World-space normal for the normal offset. Defaults to the mesh normal"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "false", ToolTip = "World-space normal for the normal offset. Defaults to the mesh normal"))
 	FExpressionInput Normal;
 
 	/** Clock for the distortion, e.g. Vrr Stepped Time so it steps like the outline boil. Defaults to game time. */
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Clock for the distortion, e.g. Vrr Stepped Time so it steps like the outline. Defaults to game time"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "Clock for the distortion, e.g. Vrr Stepped Time so it steps like the outline. Defaults to game time"))
 	FExpressionInput TimeIn;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Distortion' if not specified"))

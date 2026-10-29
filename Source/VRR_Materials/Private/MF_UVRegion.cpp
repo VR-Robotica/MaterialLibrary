@@ -46,7 +46,13 @@ namespace VrrUVRegion
 UMaterialExpressionVrrUVRegion::UMaterialExpressionVrrUVRegion(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr UV Region"), { TEXT("Local UV"), TEXT("Mask"), TEXT("To Region"), TEXT("Bounds"), TEXT("Index") });
+	InitNode(TEXT("Vrr UV Region"), {
+		{ TEXT("Local UV"), MCT_Float2 },
+		{ TEXT("Mask"), MCT_Float1 },
+		{ TEXT("To Region"), MCT_Float2 },
+		{ TEXT("Bounds"), MCT_Float4 },
+		{ TEXT("Index"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR
@@ -272,7 +278,7 @@ int32 UMaterialExpressionVrrUVRegion::CompileIndex(FMaterialCompiler* Compiler, 
 /** UDIM In takes a static bool, so the material editor only accepts static bool connections on that pin. */
 EMaterialValueType UMaterialExpressionVrrUVRegion::GetInputValueType(int32 InputIndex)
 {
-	return InputIndex == VrrUVRegion::UDIMInputIndex ? MCT_StaticBool : MCT_Float;
+	return InputIndex == VrrUVRegion::UDIMInputIndex ? MCT_StaticBool : Super::GetInputValueType(InputIndex);
 }
 
 #endif

@@ -22,7 +22,7 @@ public:
 	UMaterialExpressionVrrDissolve(const FObjectInitializer& ObjectInitializer);
 
 	/** 0-1 noise value that decides which pixels dissolve first. */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "true"))
 	FExpressionInput Noise;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Amount' if not specified"))

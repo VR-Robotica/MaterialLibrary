@@ -24,7 +24,7 @@ namespace VrrHitFlash
 UMaterialExpressionVrrHitFlash::UMaterialExpressionVrrHitFlash(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Hit Flash"), { TEXT("Emissive"), TEXT("Alpha") });
+	InitNode(TEXT("Vrr Hit Flash"), { { TEXT("Emissive"), MCT_Float3 }, { TEXT("Alpha"), MCT_Float1 } });
 }
 
 #if WITH_EDITOR

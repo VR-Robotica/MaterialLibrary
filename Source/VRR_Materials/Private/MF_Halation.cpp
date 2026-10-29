@@ -31,7 +31,7 @@ namespace VrrHalation
 UMaterialExpressionVrrHalation::UMaterialExpressionVrrHalation(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Halation"), { TEXT("Glow") });
+	InitNode(TEXT("Vrr Halation"), { { TEXT("Glow"), MCT_Float3 } });
 }
 
 #if WITH_EDITOR

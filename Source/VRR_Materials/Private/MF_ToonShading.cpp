@@ -69,7 +69,15 @@ namespace VrrToonShading
 UMaterialExpressionVrrToonShading::UMaterialExpressionVrrToonShading(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Toon Shading"), { TEXT("Emissive"), TEXT("Light Mask"), TEXT("Specular Mask"), TEXT("Rim Mask"), TEXT("Bounce Mask"), TEXT("Edge Line Mask"), TEXT("Metallic Mask") });
+	InitNode(TEXT("Vrr Toon Shading"), {
+		{ TEXT("Emissive"), MCT_Float3 },
+		{ TEXT("Light Mask"), MCT_Float1 },
+		{ TEXT("Specular Mask"), MCT_Float1 },
+		{ TEXT("Rim Mask"), MCT_Float1 },
+		{ TEXT("Bounce Mask"), MCT_Float1 },
+		{ TEXT("Edge Line Mask"), MCT_Float1 },
+		{ TEXT("Metallic Mask"), MCT_Float1 }
+	});
 }
 
 #if WITH_EDITOR

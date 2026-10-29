@@ -40,7 +40,7 @@ namespace VrrTapeGrade
 UMaterialExpressionVrrTapeGrade::UMaterialExpressionVrrTapeGrade(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Tape Grade"), { TEXT("Color") });
+	InitNode(TEXT("Vrr Tape Grade"), { { TEXT("Color"), MCT_Float3 } });
 }
 
 #if WITH_EDITOR

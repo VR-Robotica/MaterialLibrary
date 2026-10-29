@@ -33,7 +33,7 @@ class VRR_MATERIALS_API UMaterialExpressionVrrUVRegion : public UMaterialExpress
 public:
 	UMaterialExpressionVrrUVRegion(const FObjectInitializer& ObjectInitializer);
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "UVs to use. Defaults to the 'Coordinate Index' texture coordinate"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "UVs to use. Defaults to the 'Coordinate Index' texture coordinate"))
 	FExpressionInput Coordinates;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Region' if not specified"))

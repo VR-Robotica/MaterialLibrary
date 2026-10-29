@@ -39,7 +39,7 @@
 UMaterialExpressionVrrToonShadow::UMaterialExpressionVrrToonShadow(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Toon Shadow"), { TEXT("Shadow") });
+	InitNode(TEXT("Vrr Toon Shadow"), { { TEXT("Shadow"), MCT_Float1 } });
 }
 
 UObject* UMaterialExpressionVrrToonShadow::GetReferencedTexture() const

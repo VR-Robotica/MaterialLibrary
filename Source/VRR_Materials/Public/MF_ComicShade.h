@@ -58,13 +58,13 @@ public:
 	UMaterialExpressionVrrComicShade(const FObjectInitializer& ObjectInitializer);
 
 	/** The picture (e.g. Vrr Film Lens). */
-	UPROPERTY(meta = (RequiredInput = "true"))
+	UPROPERTY(meta = (VrrType = "V3", RequiredInput = "true"))
 	FExpressionInput Color;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Viewport UV for the screen-space pattern (e.g. Vrr Tape Warp's UV). Defaults to this pixel"))
+	UPROPERTY(meta = (VrrType = "V2", RequiredInput = "false", ToolTip = "Viewport UV for the screen-space pattern (e.g. Vrr Tape Warp's UV). Defaults to this pixel"))
 	FExpressionInput UV;
 
-	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "0 = darkest, 1 = brightest. Defaults to Color's luminance"))
+	UPROPERTY(meta = (VrrType = "S", RequiredInput = "false", ToolTip = "0 = darkest, 1 = brightest. Defaults to Color's luminance"))
 	FExpressionInput Tone;
 
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "Defaults to 'Shadow Level' if not specified"))
