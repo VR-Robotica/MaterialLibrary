@@ -19,11 +19,6 @@
 			"Name": "VRR_Materials",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
-		},
-		{
-			"Name": "VRR_MaterialsEditor",
-			"Type": "Editor",
-			"LoadingPhase": "PostEngineInit"
 		}
 	]
 }
