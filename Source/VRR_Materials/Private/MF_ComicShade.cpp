@@ -123,15 +123,13 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 		else
 		{
 			// 2b. Screen: rotate the pixel position, scale to cells
-			const int32 PX = X(Compiler, ScreenPx), PY = Y(Compiler, ScreenPx);
-			const int32 RX = Compiler->Sub(Compiler->Mul(PX, Compiler->Constant(C)), Compiler->Mul(PY, Compiler->Constant(S)));
-			const int32 RY = Compiler->Add(Compiler->Mul(PX, Compiler->Constant(S)), Compiler->Mul(PY, Compiler->Constant(C)));
-			Coord = Compiler->Mul(Compiler->AppendVector(RX, RY), InvSpacing);
+			const int32 Rotated = Rotate2D(Compiler, X(Compiler, ScreenPx), Y(Compiler, ScreenPx), Compiler->Constant(C), Compiler->Constant(S));
+			Coord = Compiler->Mul(Rotated, InvSpacing);
 			DerivCoord = Coord;
 		}
 
 		// 2c. Cells per screen pixel. Clamped: at depth edges the derivative spikes and would smear the pattern there.
-		const int32 Change = Compiler->Add(Compiler->Abs(Compiler->DDX(DerivCoord)), Compiler->Abs(Compiler->DDY(DerivCoord)));
+		const int32 Change = PerPixelChange(Compiler, DerivCoord, 0.0f);
 		const int32 Width = Compiler->Clamp(Compiler->Max(X(Compiler, Change), Y(Compiler, Change)), Compiler->Constant(0.001f), Half);
 		return { Coord, Width };
 	};

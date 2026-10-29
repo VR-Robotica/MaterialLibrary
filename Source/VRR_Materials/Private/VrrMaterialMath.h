@@ -12,8 +12,8 @@
  *  - Inputs:       IsConnected / InputOr / Float3Or / ColorOr, for the "use the pin if wired, else the property"
  *                  pattern every node repeats (properties marked OverridingInputProperty).
  *  - Components:   X / Y / Z / W / XYZ masks, so long ComponentMask calls stay readable.
- *  - Math:         luminance, YIQ video color space, hashes, value noise (deterministic, no sine, stable at large
- *                  coordinates) and the engine's gradient noise.
+ *  - Math:         0-1 to -1..1, 2D rotation, change per screen pixel (fwidth), luminance, YIQ video color space,
+ *                  hashes, value noise (deterministic, no sine, stable at large coordinates) and gradient noise.
  *  - Time:         seconds (game or real), stepped frame numbers and per-frame random seeds.
  *  - Post process: viewport UV, view size, "1080p pixel" units and clamped scene sampling.
  *
@@ -74,6 +74,29 @@ namespace VrrMaterialMath
 	inline int32 XYZ(FMaterialCompiler* Compiler, int32 V) { return Compiler->ComponentMask(V, true, true, true, false); }
 
 	// MATH
+
+	/** 0-1 -> -1..1 (V * 2 - 1), e.g. for signed noise or random offsets. */
+	inline int32 ToSigned(FMaterialCompiler* Compiler, int32 V01)
+	{
+		return Compiler->Sub(Compiler->Mul(V01, Compiler->Constant(2.0f)), Compiler->Constant(1.0f));
+	}
+
+	/** (X, Y) rotated by the angle whose cosine and sine are Cos and Sin: (X c - Y s, X s + Y c), as a float2. */
+	inline int32 Rotate2D(FMaterialCompiler* Compiler, int32 X, int32 Y, int32 Cos, int32 Sin)
+	{
+		return Compiler->AppendVector(
+			Compiler->Sub(Compiler->Mul(X, Cos), Compiler->Mul(Y, Sin)),
+			Compiler->Add(Compiler->Mul(X, Sin), Compiler->Mul(Y, Cos)));
+	}
+
+	/**
+	 * How much V changes from one screen pixel to the next: abs(ddx) + abs(ddy) (fwidth), never below MinChange.
+	 * Divide a distance by it to measure that distance in screen pixels, e.g. for a one-pixel anti-aliased edge.
+	 */
+	inline int32 PerPixelChange(FMaterialCompiler* Compiler, int32 V, float MinChange = 1e-5f)
+	{
+		return Compiler->Max(Compiler->Add(Compiler->Abs(Compiler->DDX(V)), Compiler->Abs(Compiler->DDY(V))), Compiler->Constant(MinChange));
+	}
 
 	/** Rec. 709 luminance of a color. */
 	inline int32 Luminance(FMaterialCompiler* Compiler, int32 Color)

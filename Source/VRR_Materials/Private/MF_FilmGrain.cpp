@@ -61,8 +61,7 @@ int32 UMaterialExpressionVrrFilmGrain::Compile(FMaterialCompiler* Compiler, int3
 	// 3. Signed grain -1..1. Colored film gets an independent grain per channel (different seeds).
 	auto SignedGrain = [&](float SeedX, float SeedY)
 	{
-		const int32 Noise = ValueNoise(Compiler, Compiler->Add(Base, Compiler->Constant2(SeedX, SeedY)));
-		return Compiler->Sub(Compiler->Mul(Noise, Compiler->Constant(2.0f)), One);
+		return ToSigned(Compiler, ValueNoise(Compiler, Compiler->Add(Base, Compiler->Constant2(SeedX, SeedY))));
 	};
 	const int32 GrainArg = bColored
 		? Compiler->AppendVector(Compiler->AppendVector(SignedGrain(0.0f, 0.0f), SignedGrain(57.3f, 11.9f)), SignedGrain(23.1f, 91.7f))

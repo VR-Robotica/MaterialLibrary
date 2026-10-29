@@ -130,17 +130,11 @@ int32 UMaterialExpressionVrrTapeGrade::Compile(FMaterialCompiler* Compiler, int3
 			const int32 NoisePos = Compiler->AppendVector(
 				Compiler->Mul(V, Compiler->Constant(HueDriftBands)),
 				Compiler->Mul(Seconds(Compiler, bIgnorePause), Compiler->Constant(HueDriftSpeed)));
-			const int32 Wobble = Compiler->Sub(Compiler->Mul(ValueNoise(Compiler, NoisePos), Compiler->Constant(2.0f)), One);
+			const int32 Wobble = ToSigned(Compiler, ValueNoise(Compiler, NoisePos));
 			Degrees = Compiler->Add(Degrees, Compiler->Mul(Wobble, Worn(0.0f, InputOr(Compiler, HueDriftIn, HueDrift))));
 		}
 		const int32 Radians = Compiler->Mul(Degrees, Compiler->Constant(UE_PI / 180.0f));
-		const int32 C = Compiler->Cosine(Radians);
-		const int32 S = Compiler->Sine(Radians);
-		const int32 I = X(Compiler, Chroma);
-		const int32 Q = Y(Compiler, Chroma);
-		Chroma = Compiler->AppendVector(
-			Compiler->Sub(Compiler->Mul(I, C), Compiler->Mul(Q, S)),
-			Compiler->Add(Compiler->Mul(I, S), Compiler->Mul(Q, C)));
+		Chroma = Rotate2D(Compiler, X(Compiler, Chroma), Y(Compiler, Chroma), Compiler->Cosine(Radians), Compiler->Sine(Radians));
 	}
 
 	return Compiler->Max(YIQToRGB(Compiler, Compiler->AppendVector(Luma, Chroma)), Zero);

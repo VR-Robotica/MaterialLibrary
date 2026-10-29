@@ -41,6 +41,10 @@ public:
 	UPROPERTY(meta = (RequiredInput = "true"))
 	FExpressionInput ShadowForward;
 
+	/** World position to test. Defaults to this pixel; Vrr Blob Shadow's World Position tests the ground under the blob. */
+	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World position to test. Defaults to this pixel's"))
+	FExpressionInput WorldPositionIn;
+
 	/** World-space normal used to push the sample point off the surface. Defaults to the mesh normal. */
 	UPROPERTY(meta = (RequiredInput = "false", ToolTip = "World-space normal for the normal offset. Defaults to the mesh normal"))
 	FExpressionInput Normal;

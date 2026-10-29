@@ -78,17 +78,9 @@ int32 UMaterialExpressionVrrHalation::Compile(FMaterialCompiler* Compiler, int32
 		const float Weight = 1.0f - 0.75f * TapRadius;	// nearer taps weigh more (1 at the center, 0.25 at the rim)
 
 		// 4b. Rotate by the per-pixel angle: (x cos - y sin, x sin + y cos)
-		int32 Offset;
-		if (bJitter)
-		{
-			const int32 RX = Compiler->Sub(Compiler->Mul(Compiler->Constant(TapX), Cos), Compiler->Mul(Compiler->Constant(TapY), Sin));
-			const int32 RY = Compiler->Add(Compiler->Mul(Compiler->Constant(TapX), Sin), Compiler->Mul(Compiler->Constant(TapY), Cos));
-			Offset = Compiler->AppendVector(RX, RY);
-		}
-		else
-		{
-			Offset = Compiler->Constant2(TapX, TapY);
-		}
+		const int32 Offset = bJitter
+			? Rotate2D(Compiler, Compiler->Constant(TapX), Compiler->Constant(TapY), Cos, Sin)
+			: Compiler->Constant2(TapX, TapY);
 
 		// 4c. Read the scene there and accumulate its brightness
 		const int32 Tap = SampleScene(Compiler, Compiler->Add(BaseUV, Compiler->Mul(Offset, RadiusUV)));

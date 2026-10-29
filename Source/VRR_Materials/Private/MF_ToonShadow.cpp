@@ -19,7 +19,7 @@
  *
  * Steps
  *  1. Read the capture's view from the Shadow* inputs.
- *  2. Pixel position relative to the capture, pushed along the normal.
+ *  2. Pixel position (or World Position In) relative to the capture, pushed along the normal.
  *  3. Project into map UV and depth, minus the bias (constant + texel + slope + distortion reach), then distort
  *     the lookup UV.
  *  4. Depth test (1 or 5 taps).
@@ -77,7 +77,8 @@ int32 UMaterialExpressionVrrToonShadow::Compile(FMaterialCompiler* Compiler, int
 
 	// 2. Pixel position relative to the capture (float3 is precise enough this close), pushed off the surface
 	const int32 N = IsConnected(Normal) ? Compiler->Normalize(Normal.Compile(Compiler)) : Compiler->VertexNormal();
-	int32 Relative = Compiler->ValidCast(Compiler->Sub(Compiler->WorldPosition(WPT_Default), XYZ(Compiler, OriginArg)), MCT_Float3);
+	const int32 Position = IsConnected(WorldPositionIn) ? WorldPositionIn.Compile(Compiler) : Compiler->WorldPosition(WPT_Default);
+	int32 Relative = Compiler->ValidCast(Compiler->Sub(Position, XYZ(Compiler, OriginArg)), MCT_Float3);
 	Relative = Compiler->Add(Relative, Compiler->Mul(N, Compiler->Mul(TexelSize, Compiler->Constant(NormalOffset))));
 
 	// 3. Project into the map: U along Right, V down along -Up (both -0.5..0.5 across the map), depth along Forward

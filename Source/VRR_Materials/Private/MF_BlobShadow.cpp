@@ -3,9 +3,10 @@
  *
  * Strategy
  *  Toon floors are Unlit, and deferred decals only change GBuffer attributes, which Unlit surfaces ignore. So the
- *  shadow is a translucent Modulate box instead (drawn by UVrr_BlobShadowComponent): for each pixel the box covers,
+ *  shadow is a translucent box instead (drawn by UVrr_BlobShadowComponent): for each pixel the box covers,
  *  this node finds the scene point behind it from scene depth and draws the shadow if that point lies on the ground
- *  inside the box, so it wraps over uneven ground just like a decal, but multiplies the final color.
+ *  inside the box, so it wraps over uneven ground just like a decal, but changes the final color. The material
+ *  blends toward SceneColor * ShadowColor rather than multiplying (see MF_BlobShadow.h), so blobs don't stack.
  *   - Scene point: camera and pixel are moved into box space first (a plain linear transform), then
  *       Ground = Camera + (Pixel - Camera) * SceneDepth / PixelDepth
  *     since both depths are view-space Z along the same ray. Box space is the 100 cm cube's local space / 50, so
@@ -28,6 +29,9 @@
  * Outputs
  *  0 Mask          0-1 shadow coverage
  *  1 Box Position  the scene point in box space (-1..1), for custom effects
+ *  2 World Position  the scene point in world space, e.g. for Vrr Toon Shadow's World Position In, so the blob can
+ *                    skip ground that's already in a toon cast shadow
+ *  3 World Normal    the scene surface's normal (from screen derivatives), facing the camera
  */
 
 #include "MF_BlobShadow.h"
@@ -38,7 +42,7 @@
 
 namespace VrrBlobShadow
 {
-	enum EOutput : int32 { Mask = 0, BoxPosition = 1 };
+	enum EOutput : int32 { Mask = 0, BoxPosition = 1, WorldPosition = 2, WorldNormal = 3 };
 
 	/** Half the size of the engine's 100 cm cube: local space / this = box space (-1..1). */
 	constexpr float HalfBoxSize = 50.0f;
@@ -47,7 +51,7 @@ namespace VrrBlobShadow
 UMaterialExpressionVrrBlobShadow::UMaterialExpressionVrrBlobShadow(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
-	InitNode(TEXT("Vrr Blob Shadow"), { TEXT("Mask"), TEXT("Box Position") });
+	InitNode(TEXT("Vrr Blob Shadow"), { TEXT("Mask"), TEXT("Box Position"), TEXT("World Position"), TEXT("World Normal") });
 }
 
 #if WITH_EDITOR
@@ -69,6 +73,22 @@ int32 UMaterialExpressionVrrBlobShadow::Compile(FMaterialCompiler* Compiler, int
 	const int32 PixelBox = ToBox(Compiler->WorldPosition(WPT_Default));
 	const int32 SceneDepth = Compiler->SceneDepth(INDEX_NONE, INDEX_NONE, false);
 	const int32 DepthRatio = Compiler->Div(SceneDepth, Compiler->Max(Compiler->PixelDepth(), Compiler->Constant(0.001f)));
+
+	// World space: the same ray from the camera, kept relative to it (small floats) until the final add
+	if (OutputIndex == VrrBlobShadow::WorldPosition || OutputIndex == VrrBlobShadow::WorldNormal)
+	{
+		const int32 CameraWorld = Compiler->ViewProperty(MEVP_WorldSpaceCameraPosition);
+		const int32 ToPixel = Compiler->ValidCast(Compiler->Sub(Compiler->WorldPosition(WPT_Default), CameraWorld), MCT_Float3);
+		const int32 ToGround = Compiler->Mul(ToPixel, DepthRatio);
+		if (OutputIndex == VrrBlobShadow::WorldPosition)
+		{
+			return Compiler->Add(CameraWorld, ToGround);
+		}
+		// Flip it toward the camera: step(0, x) = 1 when it points away (dot with the camera-to-ground ray >= 0)
+		const int32 Normal = Compiler->Normalize(Compiler->Cross(Compiler->DDX(ToGround), Compiler->DDY(ToGround)));
+		const int32 Away = Compiler->Step(Zero, Compiler->Dot(Normal, ToGround));
+		return Compiler->Mul(Normal, Compiler->Sub(One, Compiler->Mul(Away, Compiler->Constant(2.0f))));
+	}
 	const int32 Ground = Compiler->Add(CameraBox, Compiler->Mul(Compiler->Sub(PixelBox, CameraBox), DepthRatio));
 	if (OutputIndex == VrrBlobShadow::BoxPosition)
 	{
@@ -87,9 +107,7 @@ int32 UMaterialExpressionVrrBlobShadow::Compile(FMaterialCompiler* Compiler, int
 	const int32 Wobbled = Compiler->Sub(Radius, Compiler->Mul(Noise, InputOr(Compiler, NoiseAmountIn, NoiseAmount)));
 
 	// 2b. Hard edge, anti-aliased over EdgeSoftness pixels: (1 - r) / (r change per pixel), centered on the edge
-	const int32 PerPixel = Compiler->Max(
-		Compiler->Add(Compiler->Abs(Compiler->DDX(Wobbled)), Compiler->Abs(Compiler->DDY(Wobbled))),
-		Compiler->Constant(1e-5f));
+	const int32 PerPixel = PerPixelChange(Compiler, Wobbled);
 	const int32 Softness = Compiler->Max(InputOr(Compiler, EdgeSoftnessIn, EdgeSoftness), Compiler->Constant(0.1f));
 	int32 Mask = Compiler->Saturate(Compiler->Add(
 		Compiler->Div(Compiler->Sub(One, Wobbled), Compiler->Mul(PerPixel, Softness)), Compiler->Constant(0.5f)));

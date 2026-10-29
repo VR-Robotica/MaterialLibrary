@@ -17,19 +17,15 @@ class USkinnedMeshComponent;
  *   Camera:  UVrr_ToonBoilSubsystem advances MPC_ToonLighting.BoilTime while the player camera moves or turns.
  *            Every toon material gets this, with nothing to set up.
  *   Objects: a Vrr Toon Boil component on an actor runs that actor's own clock while the actor moves, its skeleton
- *            animates (idles and interactions count, see Animation), or the camera moves, and writes it to Custom Primitive Data on all the actor's primitives:
- *              [BoilTimeIndex]   = the actor's boil time
- *              [BoilActiveIndex] = 1 (0 when there's no component, so materials fall back to the camera clock)
+ *            animates (idles and interactions count, see Animation), or the camera moves, and writes it to Custom
+ *            Primitive Data on all the actor's primitives:
+ *              [CPD::BoilTime]   = the actor's boil time
+ *              [CPD::BoilActive] = 1 (0 when there's no component, so materials fall back to the camera clock)
  *
  * Materials read it as lerp(MPC BoilTime, CPD BoilTime, CPD BoilActive) and feed that into Vrr Stepped Time's Time pin.
- * The indices are fixed so the materials can match them: keep them in sync with the "ToonBoil..." CPD parameters in
- * M_Toon_Outline and M_Toon_Base.
+ * The slots live in VrrToonLighting.h; keep them in sync with the "ToonBoil..." CPD parameters in M_Toon_Outline,
+ * M_Toon_Base and M_Toon_BlobShadow.
  */
-namespace VrrToonBoil
-{
-	constexpr int32 BoilTimeIndex = 30;
-	constexpr int32 BoilActiveIndex = 31;
-}
 
 /** Project Settings > Plugins > VRR Toon Boil. */
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "VRR Toon Boil"))

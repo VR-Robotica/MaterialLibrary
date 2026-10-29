@@ -12,7 +12,11 @@
  * width follows the owner's meshes (their combined bounds, smoothed so animation doesn't make it pulse). While the
  * owner is in the air the blob shrinks and fades, and it hides when there's no ground in range.
  *
- *   Custom Primitive Data 0 = opacity (air fade), read by the material.
+ * Characters (Follow Feet): the blob sits between the feet and stretches along the line between them, so it's a
+ * circle with the feet together and an ellipse as they spread. Its width then comes from the capsule, which
+ * doesn't change with the animation.
+ *
+ *   Custom Primitive Data [CPD::BlobOpacity] (VrrToonLighting.h) = opacity (air fade), read by the material.
  *   The owner's meshes render Custom Depth (optional) so the material leaves them out of their own shadow.
  */
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent, DisplayName = "Vrr Blob Shadow"))
@@ -23,17 +27,41 @@ class VRR_MATERIALS_API UVrr_BlobShadowComponent : public UStaticMeshComponent
 public:
 	UVrr_BlobShadowComponent();
 
-	/** Blob width relative to the owner's mesh width. */
+	/** Blob width relative to the owner's mesh width (with Follow Feet on a character: the capsule's width). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow", meta = (ClampMin = "0.0", UIMax = "3.0"))
-	float WidthScale = 1.3f;
+	float WidthScale = 1.0f;
 
 	/** Fixed blob width in cm. 0 = follow the owner's mesh width. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow", meta = (ClampMin = "0.0"))
 	float FixedWidth = 0.0f;
 
-	/** On: a circle sized by the average of the owner's length and width. Off: an ellipse following both. */
+	/** On: a circle sized by the average of the owner's length and width. Off: an ellipse following both. Not used while following feet. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow")
 	bool bRound = true;
+
+	/**
+	 * Shape the blob from the owner's feet: centered between them and stretched along the line between them,
+	 * round with the feet together, elliptical as they move apart. Needs a skeletal mesh with foot bones;
+	 * without them the blob follows the owner's bounds as usual.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow|Feet")
+	bool bFollowFeet = true;
+
+	/** Left foot bone. None = find it (foot_l, L_foot, LeftFoot...). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow|Feet", meta = (EditCondition = "bFollowFeet"))
+	FName LeftFootBone;
+
+	/** Right foot bone. None = find it (foot_r, R_foot, RightFoot...). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow|Feet", meta = (EditCondition = "bFollowFeet"))
+	FName RightFootBone;
+
+	/** How much the gap between the feet stretches the blob: 1 = its length grows by the full gap. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow|Feet", meta = (EditCondition = "bFollowFeet", ClampMin = "0.0", UIMax = "3.0"))
+	float FootSpreadScale = 1.0f;
+
+	/** How fast the blob follows the feet (per second). Higher keeps up with fast steps; 0 = instantly. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow|Feet", meta = (EditCondition = "bFollowFeet", ClampMin = "0.0"))
+	float FootSmoothing = 20.0f;
 
 	/** Half height of the projection box in cm: ground this far above or below the trace hit still receives it. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Blob Shadow", meta = (ClampMin = "1.0", UIMax = "100.0"))
@@ -76,6 +104,14 @@ private:
 	/** Owner's visible meshes: top and bottom center in world space, and size (XY, cm, in actor space). */
 	bool GetOwnerFootprint(FVector& OutTop, FVector& OutBottom, FVector2D& OutSize) const;
 
+	/** World positions of the owner's left and right foot bones, if it has a skeletal mesh with them. */
+	bool GetFeet(FVector& OutLeft, FVector& OutRight) const;
+
 	/** Smoothed footprint size; negative until the first update. */
 	FVector2D SmoothedSize = FVector2D(-1.0, -1.0);
+
+	/** Smoothed feet, in world XY: the point between them relative to the owner, and left-to-right foot. */
+	FVector2D SmoothedFeetCenter = FVector2D::ZeroVector;
+	FVector2D SmoothedFeetSpan = FVector2D::ZeroVector;
+	bool bHasFeet = false;
 };

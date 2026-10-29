@@ -143,7 +143,7 @@ public:
 	FLinearColor ShadowColor = FLinearColor(0.32f, 0.3f, 0.42f);
 
 	/**
-	 * Color a cast shadow (Shadow input) multiplies the lit surface by, like Vrr Blob Shadow multiplies the floor.
+	 * Color a cast shadow (Shadow input) multiplies the lit surface by, the same way M_Toon_BlobShadow shades the floor.
 	 * Only used with Cast Shadow Color Blend above 0. Darker = stronger shadow.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Light", meta = (OverridingInputProperty = "CastShadowColorIn"))

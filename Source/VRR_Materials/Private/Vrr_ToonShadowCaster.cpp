@@ -31,16 +31,7 @@
 #include "Kismet/KismetMaterialLibrary.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
-
-/** Parameter names in MPC_ToonLighting. Must match the collection and MF_ToonLit. */
-namespace ToonShadowParams
-{
-	static const FName LightDirection(TEXT("LightDirection"));
-	static const FName ShadowOrigin(TEXT("ShadowOrigin"));
-	static const FName ShadowRight(TEXT("ShadowRight"));
-	static const FName ShadowUp(TEXT("ShadowUp"));
-	static const FName ShadowForward(TEXT("ShadowForward"));
-}
+#include "VrrToonLighting.h"
 
 /** Sets up a cheap, depth-only, orthographic capture that only renders when UpdateCapture asks it to. */
 AVrr_ToonShadowCaster::AVrr_ToonShadowCaster()
@@ -160,9 +151,19 @@ TArray<AActor*> AVrr_ToonShadowCaster::GatherActors(AActor* Actor, bool bInclude
 
 void AVrr_ToonShadowCaster::ApplyIgnoredActors()
 {
-	// A respawned player leaves its destroyed pawn behind in the list
-	IgnoredActors.RemoveAll([](const TObjectPtr<AActor>& Each) { return !IsValid(Each); });
-	Capture->HiddenActors = IgnoredActors;
+	auto IsGone = [](const TObjectPtr<AActor>& Each) { return !IsValid(Each); };
+
+	// In play, a respawned player leaves its destroyed pawn behind in the list: drop it. Not in the editor, where an
+	// empty entry is the slot the Details panel's "+" just added (editing reruns OnConstruction, which lands here)
+	const UWorld* World = GetWorld();
+	if (World && World->IsGameWorld())
+	{
+		IgnoredActors.RemoveAll(IsGone);
+	}
+
+	TArray<TObjectPtr<AActor>> Hidden = IgnoredActors;
+	Hidden.RemoveAll(IsGone);
+	Capture->HiddenActors = MoveTemp(Hidden);
 }
 
 void AVrr_ToonShadowCaster::Tick(float DeltaSeconds)
@@ -203,15 +204,14 @@ void AVrr_ToonShadowCaster::UpdateCapture(float DeltaSeconds)
 	Capture->OrthoWidth = ShadowArea;
 	Capture->SetWorldLocationAndRotation(CapturePosition, Rotation);
 
-	// 4. Tell toon materials where the map is (layout documented on Vrr Toon Shadow)
-	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowOrigin,
-		FLinearColor(CapturePosition.X, CapturePosition.Y, CapturePosition.Z, ShadowArea));
-	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowRight,
-		FLinearColor(Right.X, Right.Y, Right.Z, Resolution));
-	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowUp,
-		FLinearColor(Up.X, Up.Y, Up.Z, 0.0f));
-	UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowForward,
-		FLinearColor(Forward.X, Forward.Y, Forward.Z, 0.0f));
+	// 4. Tell toon materials where the map is (layout documented on Vrr Toon Shadow), in this world's collection
+	if (UMaterialParameterCollectionInstance* Instance = World->GetParameterCollectionInstance(LightingCollection))
+	{
+		Instance->SetVectorParameterValue(VrrToonLighting::ShadowOrigin, FLinearColor(CapturePosition.X, CapturePosition.Y, CapturePosition.Z, ShadowArea));
+		Instance->SetVectorParameterValue(VrrToonLighting::ShadowRight, FLinearColor(Right.X, Right.Y, Right.Z, Resolution));
+		Instance->SetVectorParameterValue(VrrToonLighting::ShadowUp, FLinearColor(Up.X, Up.Y, Up.Z, 0.0f));
+		Instance->SetVectorParameterValue(VrrToonLighting::ShadowForward, FLinearColor(Forward.X, Forward.Y, Forward.Z, 0.0f));
+	}
 
 	// 5. In game, queue the capture with the main frame render (cheapest). In the editor the main view may not
 	// render (non-realtime viewports), so render it now to keep the map in sync with the values above.
@@ -268,7 +268,7 @@ FVector AVrr_ToonShadowCaster::GetLightDirection() const
 	{
 		if (const UMaterialParameterCollectionInstance* Instance = World->GetParameterCollectionInstance(LightingCollection))
 		{
-			Instance->GetVectorParameterValue(ToonShadowParams::LightDirection, Value);
+			Instance->GetVectorParameterValue(VrrToonLighting::LightDirection, Value);
 		}
 	}
 	const FVector Direction(Value.R, Value.G, Value.B);
@@ -280,7 +280,7 @@ void AVrr_ToonShadowCaster::DisableShadows()
 {
 	if (LightingCollection && GetWorld())
 	{
-		UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, ToonShadowParams::ShadowOrigin, FLinearColor::Transparent);
+		UKismetMaterialLibrary::SetVectorParameterValue(this, LightingCollection, VrrToonLighting::ShadowOrigin, FLinearColor::Transparent);
 	}
 }
 

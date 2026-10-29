@@ -10,35 +10,50 @@
  *   - Place: a trace straight down from the footprint's center (ignoring the owner) finds the ground; the box is
  *     centered on the hit, yawed with the owner and optionally tilted to the slope. The material receives the
  *     shadow around the box's middle plane, so the box's half height is how much ground variation it covers.
- *   - Air: the higher the owner is above the ground, the smaller and fainter the blob (Custom Primitive Data 0).
+ *   - Air: the higher the owner is above the ground, the smaller and fainter the blob (Custom Primitive Data [CPD::BlobOpacity]).
+ *   - Feet (Follow Feet, when the owner has foot bones): the blob is centered between the feet and its X axis runs
+ *     from foot to foot. Width = the base width (capsule diameter for characters, since bounds already grow as the
+ *     legs spread), length = width + the gap between the feet, so it's round with the feet together.
+ *     The feet are smoothed as a center offset and a span vector; the span is flipped to match the last one first,
+ *     so crossing feet (the line between them turning 180 degrees) doesn't spin the blob.
  *  It also runs in the editor (OnRegister + editor ticking), so the shadow shows while placing actors.
  *
  * Steps (every tick)
- *  1. Footprint of the owner's meshes, smoothed.
- *  2. Trace down for the ground; hide when there's none.
- *  3. Height above ground -> size and opacity.
- *  4. Box transform and opacity.
+ *  1. Footprint of the owner's meshes (or capsule, when following feet), smoothed.
+ *  2. Feet: center and span, smoothed.
+ *  3. Trace down for the ground; hide when there's none.
+ *  4. Height above ground -> size and opacity.
+ *  5. Box transform and opacity.
  */
 
 #include "Vrr_BlobShadow.h"
 
+#include "Components/CapsuleComponent.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Engine/CollisionProfile.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "Materials/MaterialInterface.h"
 #include "UObject/ConstructorHelpers.h"
+#include "VrrToonLighting.h"
 
 namespace VrrBlobShadow
 {
-	/** Custom Primitive Data index the material reads the opacity from. */
-	constexpr int32 OpacityIndex = 0;
-
 	/** The engine cube is 100 cm. */
 	constexpr float CubeSize = 100.0f;
 
 	/** Material used when none is assigned. */
 	constexpr const TCHAR* DefaultMaterialPath = TEXT("/VRR_Materials/Masters/Toon/M_Toon_BlobShadow.M_Toon_BlobShadow");
+
+	/** Foot bone names tried when none are set (bone names match case-insensitively). */
+	const TCHAR* const FootBoneNames[][2] =
+	{
+		{ TEXT("foot_l"), TEXT("foot_r") },					// UE mannequin, Paragon, BGC
+		{ TEXT("L_foot"), TEXT("R_foot") },					// BGC Priss
+		{ TEXT("LeftFoot"), TEXT("RightFoot") },			// Mixamo (renamed)
+		{ TEXT("mixamorig:LeftFoot"), TEXT("mixamorig:RightFoot") },
+	};
 }
 
 UVrr_BlobShadowComponent::UVrr_BlobShadowComponent()
@@ -66,7 +81,7 @@ UVrr_BlobShadowComponent::UVrr_BlobShadowComponent()
 	SetUsingAbsoluteRotation(true);
 	SetUsingAbsoluteScale(true);
 
-	SetDefaultCustomPrimitiveDataFloat(VrrBlobShadow::OpacityIndex, 1.0f);
+	SetDefaultCustomPrimitiveDataFloat(VrrToonLighting::CPD::BlobOpacity, 1.0f);
 }
 
 void UVrr_BlobShadowComponent::OnRegister()
@@ -106,6 +121,7 @@ void UVrr_BlobShadowComponent::BeginPlay()
 	}
 
 	SmoothedSize = FVector2D(-1.0, -1.0);
+	bHasFeet = false;
 	UpdateBlob(0.0f);
 }
 
@@ -148,6 +164,53 @@ bool UVrr_BlobShadowComponent::GetOwnerFootprint(FVector& OutTop, FVector& OutBo
 	return true;
 }
 
+bool UVrr_BlobShadowComponent::GetFeet(FVector& OutLeft, FVector& OutRight) const
+{
+	const AActor* Owner = GetOwner();
+	if (!Owner)
+	{
+		return false;
+	}
+
+	// First visible skeletal mesh that has both feet (attachments like helmets have none)
+	TInlineComponentArray<USkeletalMeshComponent*> Meshes(Owner);
+	for (const USkeletalMeshComponent* Mesh : Meshes)
+	{
+		if (!Mesh->IsVisible() || !Mesh->IsRegistered() || !Mesh->GetSkeletalMeshAsset())
+		{
+			continue;
+		}
+		auto TryBones = [Mesh, &OutLeft, &OutRight](const FName Left, const FName Right)
+		{
+			const int32 LeftIndex = Mesh->GetBoneIndex(Left);
+			const int32 RightIndex = Mesh->GetBoneIndex(Right);
+			if (LeftIndex == INDEX_NONE || RightIndex == INDEX_NONE)
+			{
+				return false;
+			}
+			OutLeft = Mesh->GetBoneTransform(LeftIndex).GetLocation();
+			OutRight = Mesh->GetBoneTransform(RightIndex).GetLocation();
+			return true;
+		};
+		if (!LeftFootBone.IsNone() || !RightFootBone.IsNone())
+		{
+			if (TryBones(LeftFootBone, RightFootBone))
+			{
+				return true;
+			}
+			continue;
+		}
+		for (const auto& Names : VrrBlobShadow::FootBoneNames)
+		{
+			if (TryBones(Names[0], Names[1]))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 void UVrr_BlobShadowComponent::UpdateBlob(float DeltaSeconds)
 {
 	const AActor* Owner = GetOwner();
@@ -166,13 +229,23 @@ void UVrr_BlobShadowComponent::UpdateBlob(float DeltaSeconds)
 		TraceStart = Bottom = Owner->GetActorLocation();
 		Size = FVector2D(100.0, 100.0);
 	}
+	FVector LeftFoot;
+	FVector RightFoot;
+	const bool bFeet = bFollowFeet && GetFeet(LeftFoot, RightFoot);
+	const UCapsuleComponent* Capsule = Cast<UCapsuleComponent>(Owner->GetRootComponent());
 	if (FixedWidth > 0.0f)
 	{
 		Size = FVector2D(FixedWidth, FixedWidth);
 	}
+	else if (bFeet && Capsule)
+	{
+		// The feet add the length; the capsule gives a width that doesn't change as the legs spread
+		const double Diameter = 2.0 * Capsule->GetScaledCapsuleRadius() * WidthScale;
+		Size = FVector2D(Diameter, Diameter);
+	}
 	else
 	{
-		if (bRound)
+		if (bRound || bFeet)
 		{
 			const double Average = 0.5 * (Size.X + Size.Y);
 			Size = FVector2D(Average, Average);
@@ -187,8 +260,42 @@ void UVrr_BlobShadowComponent::UpdateBlob(float DeltaSeconds)
 	{
 		SmoothedSize = FMath::Vector2DInterpTo(SmoothedSize, Size, DeltaSeconds, SizeSmoothing);
 	}
+	FVector2D BlobSize = SmoothedSize;
 
-	// 2. Ground below the owner (the owner itself is ignored)
+	// 2. Feet: centered between them, stretched along the line from one to the other
+	if (bFeet)
+	{
+		const FVector2D ActorXY(Owner->GetActorLocation());
+		const FVector2D Center = 0.5 * (FVector2D(LeftFoot) + FVector2D(RightFoot)) - ActorXY;
+		FVector2D Span = FVector2D(RightFoot) - FVector2D(LeftFoot);
+		if (!bHasFeet || FootSmoothing <= 0.0f || DeltaSeconds <= 0.0f)
+		{
+			SmoothedFeetCenter = Center;
+			SmoothedFeetSpan = Span;
+		}
+		else
+		{
+			// An ellipse looks the same turned 180 degrees: follow the closer of the two directions
+			if ((Span | SmoothedFeetSpan) < 0.0)
+			{
+				Span = -Span;
+			}
+			SmoothedFeetCenter = FMath::Vector2DInterpTo(SmoothedFeetCenter, Center, DeltaSeconds, FootSmoothing);
+			SmoothedFeetSpan = FMath::Vector2DInterpTo(SmoothedFeetSpan, Span, DeltaSeconds, FootSmoothing);
+		}
+		bHasFeet = true;
+
+		const FVector2D TraceXY = ActorXY + SmoothedFeetCenter;
+		TraceStart.X = TraceXY.X;
+		TraceStart.Y = TraceXY.Y;
+		BlobSize.X += SmoothedFeetSpan.Size() * FootSpreadScale;
+	}
+	else
+	{
+		bHasFeet = false;
+	}
+
+	// 3. Ground below the owner (the owner itself is ignored)
 	FCollisionQueryParams Params(SCENE_QUERY_STAT(VrrBlobShadow), false, Owner);
 	const FVector TraceEnd(TraceStart.X, TraceStart.Y, Bottom.Z - MaxGroundDistance);
 	FHitResult Hit;
@@ -202,20 +309,31 @@ void UVrr_BlobShadowComponent::UpdateBlob(float DeltaSeconds)
 		return;
 	}
 
-	// 3. Height of the owner's lowest point above the ground: shrink and fade while in the air
+	// 4. Height of the owner's lowest point above the ground: shrink and fade while in the air
 	const double Height = FMath::Max(0.0, Bottom.Z - Hit.ImpactPoint.Z);
 	const float Air = FMath::Clamp(static_cast<float>(Height / FadeHeight), 0.0f, 1.0f);
 	const float Scale = FMath::Lerp(1.0f, AirScale, Air);
-	SetCustomPrimitiveDataFloat(VrrBlobShadow::OpacityIndex, 1.0f - Air);
+	const float Opacity = 1.0f - Air;
+	const TArray<float>& Data = GetCustomPrimitiveData().Data;
+	if (!Data.IsValidIndex(VrrToonLighting::CPD::BlobOpacity) || Data[VrrToonLighting::CPD::BlobOpacity] != Opacity)
+	{
+		SetCustomPrimitiveDataFloat(VrrToonLighting::CPD::BlobOpacity, Opacity);	// only on change: each write re-uploads it
+	}
 
-	// 4. Box on the ground, yawed with the owner, optionally tilted to the slope
+	// 5. Box on the ground, optionally tilted to the slope. X runs foot to foot (owner's right with the feet together),
+	//    or along the owner's forward without feet
 	const FVector Up = bAlignToGround ? FVector(Hit.ImpactNormal) : FVector::UpVector;
-	const FVector Forward = FVector::VectorPlaneProject(Owner->GetActorForwardVector(), Up).GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
-	const FRotator Rotation = FRotationMatrix::MakeFromXZ(Forward, Up).Rotator();
+	const FVector OwnerAxis = bFeet ? Owner->GetActorRightVector() : Owner->GetActorForwardVector();
+	FVector Axis = bFeet ? FVector(SmoothedFeetSpan, 0.0) : OwnerAxis;
+	Axis = FVector::VectorPlaneProject(Axis, Up);
+	if (!Axis.Normalize(1.0))	// feet (nearly) on top of each other: no direction to follow
+	{
+		Axis = FVector::VectorPlaneProject(OwnerAxis, Up).GetSafeNormal(UE_SMALL_NUMBER, FVector::ForwardVector);
+	}
+	const FRotator Rotation = FRotationMatrix::MakeFromXZ(Axis, Up).Rotator();
 	const FVector BoxScale(
-		SmoothedSize.X * Scale / VrrBlobShadow::CubeSize,
-		SmoothedSize.Y * Scale / VrrBlobShadow::CubeSize,
+		BlobSize.X * Scale / VrrBlobShadow::CubeSize,
+		BlobSize.Y * Scale / VrrBlobShadow::CubeSize,
 		2.0f * ProjectionHalfHeight / VrrBlobShadow::CubeSize);
-	SetWorldLocationAndRotation(Hit.ImpactPoint, Rotation);
-	SetWorldScale3D(BoxScale);
+	SetWorldTransform(FTransform(Rotation, Hit.ImpactPoint, BoxScale));	// one transform update, not two
 }

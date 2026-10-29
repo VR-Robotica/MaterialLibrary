@@ -45,8 +45,6 @@ int32 UMaterialExpressionVrrTapeWarp::Compile(FMaterialCompiler* Compiler, int32
 
 	const int32 Zero = Compiler->Constant(0.0f);
 	const int32 One = Compiler->Constant(1.0f);
-	const int32 Two = Compiler->Constant(2.0f);
-	auto Signed = [&](int32 Value01) { return Compiler->Sub(Compiler->Mul(Value01, Two), One); };	// 0-1 -> -1..1
 
 	// 1. Shared values: this pixel's height, the clock, a seed per tape frame and the scanline index
 	const int32 BaseUV = ViewportUV(Compiler, UV);
@@ -83,7 +81,7 @@ int32 UMaterialExpressionVrrTapeWarp::Compile(FMaterialCompiler* Compiler, int32
 
 	// 4. Sideways offset of this line, in 1080p pixels
 	// 4a. Jitter
-	int32 Offset = Compiler->Mul(Signed(Hash2(Compiler, Line, Seed, 0.0f)), InputOr(Compiler, LineJitterIn, LineJitter));
+	int32 Offset = Compiler->Mul(ToSigned(Compiler, Hash2(Compiler, Line, Seed, 0.0f)), InputOr(Compiler, LineJitterIn, LineJitter));
 	// 4b. Wobble
 	if (WobbleAmount > 0.0f)
 	{
@@ -91,7 +89,7 @@ int32 UMaterialExpressionVrrTapeWarp::Compile(FMaterialCompiler* Compiler, int32
 		Offset = Compiler->Add(Offset, Compiler->Mul(Compiler->Sine(Phase), Compiler->Constant(WobbleAmount)));
 	}
 	// 4c. Glitch tear
-	const int32 Tear = Compiler->Mul(Signed(Hash2(Compiler, Line, Seed, 13.7f)), InputOr(Compiler, GlitchStrengthIn, GlitchStrength));
+	const int32 Tear = Compiler->Mul(ToSigned(Compiler, Hash2(Compiler, Line, Seed, 13.7f)), InputOr(Compiler, GlitchStrengthIn, GlitchStrength));
 	Offset = Compiler->Add(Offset, Compiler->Mul(Tear, Glitch));
 	// 4d. Head switching: Strip is 0 above the strip and 1 on the bottom line (viewport V grows downward)
 	if (HeadSwitchHeight > 0.0f)

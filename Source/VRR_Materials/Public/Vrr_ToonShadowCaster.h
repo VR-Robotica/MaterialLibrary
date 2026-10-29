@@ -118,6 +118,6 @@ private:
 	/** Actor plus, optionally, everything attached to it (recursively). */
 	static TArray<AActor*> GatherActors(AActor* Actor, bool bIncludeAttached);
 
-	/** Drops destroyed entries and hands the list to the capture. */
+	/** Hands the valid entries to the capture; in play, also drops destroyed ones from the list. */
 	void ApplyIgnoredActors();
 };

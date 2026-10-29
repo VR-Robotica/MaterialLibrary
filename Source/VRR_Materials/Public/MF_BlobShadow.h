@@ -6,14 +6,21 @@
 
 /**
  * Cel-shaded blob shadow, projected like a decal from a box mesh (see UVrr_BlobShadowComponent).
- * Use in a Translucent, Modulate, Unlit, Two Sided material with Disable Depth Test on, drawn on a 100 cm cube:
- *   Emissive = lerp(1, ShadowColor, Mask)
- * Modulate multiplies whatever is behind, so it darkens lit and Unlit (toon) floors alike, unlike a deferred decal.
+ * Use in a Translucent (alpha), Unlit, Two Sided material with Disable Depth Test on, drawn on a 100 cm cube
+ * (M_Toon_BlobShadow):
+ *   Target   = SceneColor * lerp(1, ShadowColor, Strength)
+ *   Coverage = Mask * (ground not in toon cast shadow) * (not under the cel drop shadow)
+ *   Color    = Target * Coverage, Transmittance = 1 - Coverage
+ * Every blob blends toward the same target (the scene before translucency, shadowed once), so overlapping blobs
+ * don't multiply into a darker patch the way Modulate did, and it works on lit and Unlit (toon) floors alike.
  *
  *   Ground    = the scene point behind the pixel (from scene depth), in box space (-1..1 on every axis)
  *   r         = length(Ground.xy) - Noise(edge direction, Time * NoiseSpeed) * NoiseAmount
  *   Mask      = hard ellipse r < 1 (anti-aliased over EdgeSoftness px), fading out toward the box top / bottom,
  *               only on ground facing up the box, never on Custom Depth objects (characters), back faces only
+ *
+ * World Position / World Normal give the ground point under the pixel, so the material can test it against other
+ * shadows (Vrr Toon Shadow's World Position In) and not darken ground that's already shaded.
  */
 UCLASS(collapsecategories, hidecategories=Object)
 class VRR_MATERIALS_API UMaterialExpressionVrrBlobShadow : public UMaterialExpressionVrrBase

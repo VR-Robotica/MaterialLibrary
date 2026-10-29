@@ -64,8 +64,6 @@
 namespace VrrToonShading
 {
 	enum EOutput : int32 { Emissive = 0, LightMask = 1, SpecularMask = 2, RimMask = 3, BounceMask = 4, EdgeLineMask = 5, MetallicMask = 6 };
-
-	FVector3f ToVector(const FLinearColor& Color) { return FVector3f(Color.R, Color.G, Color.B); }
 }
 
 UMaterialExpressionVrrToonShading::UMaterialExpressionVrrToonShading(const FObjectInitializer& ObjectInitializer)
@@ -78,7 +76,6 @@ UMaterialExpressionVrrToonShading::UMaterialExpressionVrrToonShading(const FObje
 int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, int32 OutputIndex)
 {
 	using namespace VrrMaterialMath;
-	using VrrToonShading::ToVector;
 
 	const int32 One = Compiler->Constant(1.0f);
 	const int32 MinSoftness = Compiler->Constant(0.0005f);	// keeps the smoothstep edges from dividing by zero
@@ -195,10 +192,7 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 		const int32 NextEdge = Compiler->Ceil(BandCoord);
 
 		// 6b. Distance below the next edge in screen pixels: band units / band units per pixel (fwidth)
-		const int32 PerPixel = Compiler->Max(
-			Compiler->Add(Compiler->Abs(Compiler->DDX(BandCoord)), Compiler->Abs(Compiler->DDY(BandCoord))),
-			Compiler->Constant(1e-5f));
-		const int32 DistancePx = Compiler->Div(Compiler->Sub(NextEdge, BandCoord), PerPixel);
+		const int32 DistancePx = Compiler->Div(Compiler->Sub(NextEdge, BandCoord), PerPixelChange(Compiler, BandCoord));
 
 		// 6c. Width given in 1080p pixels, scaled to this view's height
 		const int32 ViewHeight = Y(Compiler, Compiler->ViewProperty(MEVP_ViewSize));
@@ -252,10 +246,10 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	}
 
 	// 8. Final color
-	const int32 BaseColorArg = Float3Or(Compiler, BaseColorIn, ToVector(BaseColor));
-	const int32 LightColorArg = Float3Or(Compiler, LightColorIn, ToVector(LightColor));
-	const int32 ShadowColorArg = Float3Or(Compiler, ShadowColorIn, ToVector(ShadowColor));
-	const int32 RimColorArg = Float3Or(Compiler, RimColorIn, ToVector(RimColor));
+	const int32 BaseColorArg = ColorOr(Compiler, BaseColorIn, BaseColor);
+	const int32 LightColorArg = ColorOr(Compiler, LightColorIn, LightColor);
+	const int32 ShadowColorArg = ColorOr(Compiler, ShadowColorIn, ShadowColor);
+	const int32 RimColorArg = ColorOr(Compiler, RimColorIn, RimColor);
 
 	// 8a. Diffuse: base color lit by the light color, or tinted by the shadow color (the ambient), plus the bounce
 	//     light added to that lighting before it multiplies the base color (so it tints like real light does).
@@ -263,7 +257,7 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	//     With a color blend, that share of the line is painted in Edge Line Color at the end (8c) instead.
 	//     Cast Shadow Color Blend b: the mask keeps 1 - b of the cast shadow, and the other b becomes a multiply by
 	//     Cast Shadow Color on the lit side only (the shadow side is already shadow toned), the way the blob shadow's
-	//     Modulate box multiplies the floor.
+	//     box shades the floor, so the two shadows match.
 	const bool bEdgeColorOn = bEdgeLineOn && (EdgeLineColorBlend > 0.0f || IsConnected(EdgeLineColorBlendIn));
 	const int32 ColorBlendArg = bEdgeColorOn ? Compiler->Saturate(InputOr(Compiler, EdgeLineColorBlendIn, EdgeLineColorBlend)) : INDEX_NONE;
 	const bool bCastColorOn = bHasShadow && (CastShadowColorBlend > 0.0f || IsConnected(CastShadowColorBlendIn));
@@ -282,13 +276,13 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	int32 Lighting = Compiler->Lerp(ShadowColorArg, LightColorArg, DiffuseMask);
 	if (bCastColorOn)
 	{
-		const int32 CastColorArg = Float3Or(Compiler, CastShadowColorIn, ToVector(CastShadowColor));
+		const int32 CastColorArg = ColorOr(Compiler, CastShadowColorIn, CastShadowColor);
 		const int32 CastAmount = Compiler->Mul(Compiler->Mul(Compiler->Sub(One, CastLit), CastBlendArg), FormMask);
 		Lighting = Compiler->Mul(Lighting, Compiler->Lerp(Compiler->Constant3(1.0f, 1.0f, 1.0f), CastColorArg, CastAmount));
 	}
 	if (bBounceOn)
 	{
-		const int32 BounceColorArg = Float3Or(Compiler, BounceColorIn, ToVector(BounceColor));
+		const int32 BounceColorArg = ColorOr(Compiler, BounceColorIn, BounceColor);
 		const int32 BounceStrength = Compiler->Mul(BounceMask, InputOr(Compiler, BounceIntensityIn, BounceIntensity));
 		Lighting = Compiler->Add(Lighting, Compiler->Mul(BounceColorArg, BounceStrength));
 	}
@@ -302,7 +296,7 @@ int32 UMaterialExpressionVrrToonShading::Compile(FMaterialCompiler* Compiler, in
 	// 8c. Colored edge line painted over the result (white by default, so halation / bloom catch it)
 	if (bEdgeColorOn)
 	{
-		const int32 EdgeColorArg = Float3Or(Compiler, EdgeLineColorIn, ToVector(EdgeLineColor));
+		const int32 EdgeColorArg = ColorOr(Compiler, EdgeLineColorIn, EdgeLineColor);
 		Result = Compiler->Lerp(Result, EdgeColorArg, Compiler->Saturate(Compiler->Mul(EdgeLine, ColorBlendArg)));
 	}
 	return Result;

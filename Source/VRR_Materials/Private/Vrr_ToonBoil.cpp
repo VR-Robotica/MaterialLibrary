@@ -7,8 +7,9 @@
  *  turned into a clock that only advances while moving. Materials use that clock instead of game time, through
  *  Vrr Stepped Time, so the noise steps at its usual frame rate while things move and freezes when they stop.
  *   - Camera clock (subsystem): global, written to MPC_ToonLighting.BoilTime. Covers every toon material.
- *   - Actor clock (component):  runs while the actor moves, animates in place, or the camera moves, written per primitive as Custom Primitive
- *                               Data, plus an "active" flag so materials know to use it instead of the camera clock.
+ *   - Actor clock (component):  runs while the actor moves, animates in place, or the camera moves, written per
+ *                               primitive as Custom Primitive Data, plus an "active" flag so materials know to use it
+ *                               instead of the camera clock.
  *  One clock per actor (not camera + actor added together) keeps the speed the same when both move.
  *
  * Steps (each frame)
@@ -19,7 +20,7 @@
  *     Min Animation Speed. Animation can skip frames (budgets, URO), so an unchanged pose keeps the last answer for
  *     a moment instead of counting as stopped.
  *  2. Clock: while moving, add the frame's delta time.
- *  3. Publish: subsystem -> MPC BoilTime; component -> CPD [BoilTimeIndex] = time, [BoilActiveIndex] = 1.
+ *  3. Publish: subsystem -> MPC BoilTime; component -> CPD [BoilTime] = time, [BoilActive] = 1 (VrrToonLighting.h).
  */
 
 #include "Vrr_ToonBoil.h"
@@ -32,22 +33,19 @@
 #include "GameFramework/PlayerController.h"
 #include "Materials/MaterialParameterCollection.h"
 #include "Materials/MaterialParameterCollectionInstance.h"
+#include "VrrToonLighting.h"
 
 namespace VrrToonBoil
 {
 	/** An unchanged pose counts as "animation skipped a frame" for this long before it counts as a held pose. */
 	constexpr float PoseSkipTolerance = 0.25f;
-
-	/** Scalar in MPC_ToonLighting that receives the camera clock. Must match the collection and the toon materials. */
-	static const FName BoilTimeParam(TEXT("BoilTime"));
 }
 
 // SETTINGS
 
 UVrr_ToonBoilSettings::UVrr_ToonBoilSettings()
 {
-	LightingCollection = TSoftObjectPtr<UMaterialParameterCollection>(
-		FSoftObjectPath(TEXT("/VRR_Materials/Masters/Toon/MPC_ToonLighting.MPC_ToonLighting")));
+	LightingCollection = TSoftObjectPtr<UMaterialParameterCollection>(FSoftObjectPath(VrrToonLighting::CollectionPath));
 }
 
 // MOTION
@@ -142,7 +140,7 @@ void UVrr_ToonBoilSubsystem::Tick(float DeltaTime)
 	{
 		if (UMaterialParameterCollectionInstance* Instance = World->GetParameterCollectionInstance(Collection))
 		{
-			Instance->SetScalarParameterValue(VrrToonBoil::BoilTimeParam, CameraBoilTime);
+			Instance->SetScalarParameterValue(VrrToonLighting::BoilTime, CameraBoilTime);
 		}
 	}
 }
@@ -304,8 +302,8 @@ void UVrr_ToonBoilComponent::WriteToPrimitives(float Active)
 	{
 		if (UPrimitiveComponent* Primitive = Weak.Get())
 		{
-			Primitive->SetCustomPrimitiveDataFloat(VrrToonBoil::BoilTimeIndex, BoilTime);
-			Primitive->SetCustomPrimitiveDataFloat(VrrToonBoil::BoilActiveIndex, Active);
+			// One write for both slots (adjacent): each write re-uploads the primitive's data
+			Primitive->SetCustomPrimitiveDataVector2(VrrToonLighting::CPD::BoilTime, FVector2D(BoilTime, Active));
 		}
 	}
 	WrittenTime = BoilTime;
