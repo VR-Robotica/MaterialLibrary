@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -26,22 +28,22 @@ enum class EVrrHalftoneStyle : uint8
 	 */
 	Print,
 	/**
-	 * Hi-Fi RUSH style: dots on lit areas, sized by brightness, so light falloff reads as dots shrinking instead of a
+	 * Lit Falloff: dots on lit areas, sized by brightness, so light falloff reads as dots shrinking instead of a
 	 * smooth gradient. Dots grow from Shadow Level (set it to Hatch End Level to hand off from the lines) and merge at Highlight Level, so fully lit
 	 * areas stay clean. Dots brighten and the gaps darken, keeping the average brightness the same.
 	 * Dots shrink with distance and are gone at Dot Shrink Distance.
 	 */
-	LitFalloff UMETA(DisplayName = "Hi-Fi Rush (Lit Falloff)"),
+	LitFalloff UMETA(DisplayName = "Lit Falloff"),
 };
 
 /**
- * Comic print shading for a Post Process material (Hi-Fi RUSH style), applied to Color:
+ * Comic print shading for a Post Process material, applied to Color:
  *
  *  - Hatching: parallel ink lines below Hatch End Level. Lines get thicker the darker the area (up to Hatch Max
  *    Width at black), and a second, crossed set is added in the darkest areas. Over near-black, lines switch to a
  *    light ink so they still show.
  *  - Halftone: round dots on bright areas that grow with brightness, or (Dot Style = Print) classic print ink dots
- *    that grow as areas get darker, or (Dot Style = Hi-Fi Rush) dots that turn light falloff into dot size.
+ *    that grow as areas get darker, or (Dot Style = Lit Falloff) dots that turn light falloff into dot size.
  *  - Midtones stay clean, and the pattern fades out with distance (and on the sky).
  *
  * "Dark" and "bright" come from Tone (0-1). It defaults to Color's luminance. Feed a light mask to Tone to drive the
@@ -109,7 +111,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Comic Shade", meta = (ClampMin = "1.0"))
 	float FadeEnd = 15000.0f;
 
-	/** Hi-Fi Rush: dots start at this tone and grow toward Highlight Level. (Hatching ends at Hatch End Level.) */
+	/** Lit Falloff: dots start at this tone and grow toward Highlight Level. (Hatching ends at Hatch End Level.) */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "ShadowLevelIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float ShadowLevel = 0.3f;
 
@@ -158,14 +160,14 @@ public:
 
 	/**
 	 * Highlights: light dots on bright areas. Print: ink dots that grow as areas get darker (classic print).
-	 * Hi-Fi Rush: dots between Shadow Level and Highlight Level that turn light falloff into dot size.
+	 * Lit Falloff: dots between Shadow Level and Highlight Level that turn light falloff into dot size.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone")
 	EVrrHalftoneStyle DotStyle = EVrrHalftoneStyle::Highlights;
 
 	/**
 	 * Highlights: tone above this gets dots (bigger the brighter). Print: tone below this gets ink dots (bigger the
-	 * darker). Hi-Fi Rush: the dots have fully merged at this tone.
+	 * darker). Lit Falloff: the dots have fully merged at this tone.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "HighlightLevelIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float HighlightLevel = 0.7f;
@@ -182,16 +184,16 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (UIMin = "-90.0", UIMax = "90.0"))
 	float DotAngle = 45.0f;
 
-	/** How strongly the dots show: toward Dot Color (Highlights), toward Ink Color (Print), or dot/gap contrast (Hi-Fi Rush). */
+	/** How strongly the dots show: toward Dot Color (Highlights), toward Ink Color (Print), or dot/gap contrast (Lit Falloff). */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "DotOpacityIn", ClampMin = "0.0", ClampMax = "1.0"))
 	float DotOpacity = 0.35f;
 
-	/** Highlights dots blend the picture toward this color, and Hi-Fi Rush dots are tinted by it. Print dots use Ink Color. */
+	/** Highlights dots blend the picture toward this color, and Lit Falloff dots are tinted by it. Print dots use Ink Color. */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "DotColorIn"))
 	FLinearColor DotColor = FLinearColor(1.0f, 1.0f, 1.0f);
 
 	/**
-	 * Hi-Fi Rush only: dots are full size at the camera, shrink with distance, and are gone at this distance (cm),
+	 * Lit Falloff only: dots are full size at the camera, shrink with distance, and are gone at this distance (cm),
 	 * so only nearby objects get the big dots. 0 = no shrinking.
 	 */
 	UPROPERTY(EditAnywhere, Category = "Comic Shade|Halftone", meta = (OverridingInputProperty = "DotShrinkDistanceIn", ClampMin = "0.0", UIMax = "20000.0"))

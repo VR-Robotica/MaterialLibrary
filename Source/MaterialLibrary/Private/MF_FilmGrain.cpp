@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Film Grain: soft, clumpy film grain for a Post Process material.
  *

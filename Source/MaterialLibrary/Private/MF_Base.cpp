@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Shared setup for the VRR material nodes: palette category, typed pin names, caption and error messages.
  * See MF_Base.h for why the nodes share a base.

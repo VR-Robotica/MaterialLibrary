@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Toon Shading: cel shading from one art-directed fake light. Scene lights are ignored.
  *

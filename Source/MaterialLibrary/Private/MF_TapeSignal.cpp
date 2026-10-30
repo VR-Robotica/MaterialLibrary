@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Tape Signal: the video tape signal look (chroma bleed, scanlines, static, dropouts) for a Post Process material.
  *

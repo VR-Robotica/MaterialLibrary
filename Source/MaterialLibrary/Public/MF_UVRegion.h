@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 #pragma once
 
 #include "CoreMinimal.h"
@@ -5,7 +7,7 @@
 #include "MF_UVRegion.generated.h"
 
 /**
- * Picks one material region out of a God Tools "UV Layouts" channel (usually UV1), or tells which region a UV is in.
+ * Picks one material region out of a TechArt Toolbox "UV Layouts" channel (usually UV1), or tells which region a UV is in.
  *
  * Atlas layouts: every material slot gets a region of the 0-1 square, in material slot order, columns first:
  * 1 region the whole square, 2 two columns, 3 three columns, more fill extra rows (4 = 2 + 2, 5 = 3 + 2, 7 = 3 + 2 + 2).
@@ -23,7 +25,7 @@
  *
  * Region and Region Count can be driven by scalar parameters, so material instances can switch regions.
  * UDIM takes a static bool (a Static Bool Parameter), since it changes the shader.
- * The row and column math must stay in step with MakeRegions and MakeUDIMTiles in VRR_EditorTools' Core_UVLayout.cpp.
+ * The row and column math must stay in step with MakeRegions and MakeUDIMTiles in TechArt Toolbox's Core_UVLayout.cpp.
  */
 UCLASS(collapsecategories, hidecategories=Object)
 class MATERIALLIBRARY_API UMaterialExpressionVrrUVRegion : public UMaterialExpressionVrrBase

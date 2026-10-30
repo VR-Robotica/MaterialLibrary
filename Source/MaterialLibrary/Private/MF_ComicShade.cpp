@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Comic Shade: comic print shading (hatching + halftone dots) for a Post Process material.
  *
@@ -18,7 +20,7 @@
  *   - Halftone (by Dot Style):
  *       Highlights  light dots above Highlight Level that grow with brightness.
  *       Print       classic ink dots that grow as it gets darker, touching at mid-gray and leaving paper holes.
- *       Hi-Fi Rush  dots between Shadow Level and Highlight Level, so light falloff reads as dot size; dots brighten
+ *       Lit Falloff  dots between Shadow Level and Highlight Level, so light falloff reads as dot size; dots brighten
  *                   and gaps darken by their covered area, keeping the average brightness the same. Dots also
  *                   shrink with distance (gone at Dot Shrink Distance), so big dots are only on nearby objects.
  *  Midtones stay clean, and both patterns fade out with distance (the sky is always past the fade).
@@ -27,7 +29,7 @@
  *  1. Pattern space (screen pixels, or world plane axes).
  *  2. MakeGrid(): rotated, scaled grid coordinate + anti-aliasing width.
  *  3. Hatching mask.
- *  4. Halftone mask (one branch per Dot Style; Hi-Fi Rush scales its dots by distance).
+ *  4. Halftone mask (one branch per Dot Style; Lit Falloff scales its dots by distance).
  *  5. Distance fade.
  *  6. Composite onto Color.
  *
@@ -179,17 +181,17 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 		}
 	}
 
-	// This pixel's distance from the camera (cm), used by the Hi-Fi Rush dot shrink and the distance fade (step 5)
+	// This pixel's distance from the camera (cm), used by the Lit Falloff dot shrink and the distance fade (step 5)
 	const int32 Depth = X(Compiler, Compiler->SceneTextureLookup(Compiler->GetViewportUV(), PPI_SceneDepth, false, false, false));
 
 	// 4. Halftone
 	int32 Dots = Zero;
-	int32 DotArea = Zero;	// Hi-Fi Rush: the fraction of each cell the dots cover, so the gaps can balance them
+	int32 DotArea = Zero;	// Lit Falloff: the fraction of each cell the dots cover, so the gaps can balance them
 	const FGrid DotGrid = MakeGrid(DotAngle, InputOr(Compiler, DotSpacingIn, DotSpacing));
 	const int32 DotDistance = Compiler->Length(Compiler->Sub(Compiler->Frac(DotGrid.Coord), Compiler->Constant2(0.5f, 0.5f)));	// to the cell center
 	if (DotStyle == EVrrHalftoneStyle::LitFalloff)
 	{
-		// 4a. Hi-Fi Rush: dot size follows how far Tone is between Shadow Level (no dots) and Highlight Level (merged)
+		// 4a. Lit Falloff: dot size follows how far Tone is between Shadow Level (no dots) and Highlight Level (merged)
 		const int32 Low = InputOr(Compiler, ShadowLevelIn, ShadowLevel);
 		const int32 High = InputOr(Compiler, HighlightLevelIn, HighlightLevel);
 		const int32 Bright = Compiler->Saturate(Compiler->Div(Compiler->Sub(ToneArg, Low), Compiler->Max(Compiler->Sub(High, Low), Compiler->Constant(0.001f))));
@@ -276,7 +278,7 @@ int32 UMaterialExpressionVrrComicShade::Compile(FMaterialCompiler* Compiler, int
 	int32 Result = Compiler->Lerp(ColorArg, LineColor, Compiler->Mul(Hatch, InputOr(Compiler, HatchOpacityIn, HatchOpacity)));
 	const int32 Opacity = InputOr(Compiler, DotOpacityIn, DotOpacity);
 
-	// 6b. Hi-Fi Rush: dots brighten and gaps darken. 1 + Opacity * (Dots - Area) averages to 1 over a cell, so the
+	// 6b. Lit Falloff: dots brighten and gaps darken. 1 + Opacity * (Dots - Area) averages to 1 over a cell, so the
 	//     overall brightness doesn't change. Dots are tinted by Dot Color.
 	if (DotStyle == EVrrHalftoneStyle::LitFalloff)
 	{

@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Stepped Time: time that advances in held steps (animation "on twos" / "on threes").
  *

@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Toon Shadow: cast shadows for toon materials from the fake light (1 = lit, 0 = in shadow).
  *

@@ -3,13 +3,14 @@
 	"Version": 1,
 	"VersionName": "1.0",
 	"FriendlyName": "Material Library",
-	"Description": "Material Library",
+	"Description": "Stylized material nodes and masters: toon shading with its own shadow map and motion-only line boil, cel and blob shadows, comic print and film / video tape post processing, dissolve and hit flash, vertex animation texture materials and PBR material functions.",
 	"Category": "Materials",
 	"CreatedBy": "VR Robotica",
-	"CreatedByURL": "",
-	"DocsURL": "",
-	"MarketplaceURL": "",
-	"SupportURL": "",
+	"CreatedByURL": "https://github.com/VR-Robotica",
+	"DocsURL": "https://github.com/VR-Robotica/MaterialLibrary#readme",
+	"FabURL": "",
+	"SupportURL": "https://github.com/VR-Robotica/MaterialLibrary/issues",
+	"EngineVersion": "5.8.0",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
@@ -18,7 +19,18 @@
 		{
 			"Name": "MaterialLibrary",
 			"Type": "Runtime",
-			"LoadingPhase": "PostConfigInit"
+			"LoadingPhase": "PostConfigInit",
+			"PlatformAllowList": [ "Win64", "Mac", "Linux" ]
+		}
+	],
+	"Plugins": [
+		{
+			"Name": "AnimToTexture",
+			"Enabled": true
+		},
+		{
+			"Name": "BaseMaterial",
+			"Enabled": true
 		}
 	]
-}
+}

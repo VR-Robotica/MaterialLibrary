@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Cel Layer component: tags its owner's meshes for the cel shadow post process.
  *

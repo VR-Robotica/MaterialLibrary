@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Blob Shadow: a cel-shaded blob shadow, projected onto the ground like a decal.
  *

@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Film Lens: lens imperfections for a Post Process material (chromatic aberration, channel shift, softness).
  *

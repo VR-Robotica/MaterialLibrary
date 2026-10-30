@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Halation: the warm red-orange halo film gets around bright highlights. Use in a Post Process material.
  *

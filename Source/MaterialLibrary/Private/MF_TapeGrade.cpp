@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Tape Grade: the color of a worn 1990s video tape (levels, faded color, hot reds, tints, hue drift) for a Post
  * Process material placed after tonemapping.

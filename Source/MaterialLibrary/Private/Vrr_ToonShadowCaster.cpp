@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Toon shadow caster: renders the depth map that Vrr Toon Shadow reads, from the toon fake light.
  *

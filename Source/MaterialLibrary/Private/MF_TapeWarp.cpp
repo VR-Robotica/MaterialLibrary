@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Tape Warp: video tape picture instability for a Post Process material.
  *

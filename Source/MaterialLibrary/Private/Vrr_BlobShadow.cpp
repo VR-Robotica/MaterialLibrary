@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Blob Shadow component: keeps a cel-shaded blob shadow under its owner.
  *

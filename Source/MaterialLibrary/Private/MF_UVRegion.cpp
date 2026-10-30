@@ -1,8 +1,10 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
- * Vrr UV Region: picks one material region out of a God Tools "UV Layouts" channel, or tells which region a UV is in.
+ * Vrr UV Region: picks one material region out of a TechArt Toolbox "UV Layouts" channel, or tells which region a UV is in.
  *
  * Strategy
- *  The layout tool (VRR_EditorTools, Core_UVLayout.cpp) packs each material slot into its own rectangle of the 0-1
+ *  The layout tool (TechArt Toolbox, Core_UVLayout.cpp) packs each material slot into its own rectangle of the 0-1
  *  square (atlas) or into its own UDIM tile. This node rebuilds the same rectangles in the shader from just Region and
  *  Region Count, so a material can work on one slot's area without any baked lookup data:
  *   - Bounds: Min and Size of the chosen region (CompileRegionBounds).

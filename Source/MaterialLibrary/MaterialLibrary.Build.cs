@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 using UnrealBuildTool;
 
 public class MaterialLibrary : ModuleRules

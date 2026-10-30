@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Cel Shadow: a flat drop shadow behind cel layer meshes, like an animation cel lying a little above the
  * background. Use in a Post Process material at "Scene Color Before DOF".

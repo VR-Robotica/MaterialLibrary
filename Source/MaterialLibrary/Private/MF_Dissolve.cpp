@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Dissolve: noise-driven dissolve with a glowing burn edge.
  *

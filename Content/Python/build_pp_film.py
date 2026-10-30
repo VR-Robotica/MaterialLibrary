@@ -22,7 +22,7 @@ FOLDER = "/MaterialLibrary/PostProcess"
 MATERIAL_NAME = "M_PP_Film"
 INSTANCE_NAME = "MI_PP_Film"
 # Comic Shade dot style: HIGHLIGHTS (light dots on bright areas), PRINT (classic print ink dots, bigger the darker)
-# or LIT_FALLOFF (Hi-Fi Rush: dots between shadow and highlight level, sized by brightness)
+# or LIT_FALLOFF (Lit Falloff: dots between shadow and highlight level, sized by brightness)
 DOT_STYLE = "HIGHLIGHTS"
 
 assets = unreal.AssetToolsHelpers.get_asset_tools()

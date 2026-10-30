@@ -1,3 +1,5 @@
+// Copyright VR Robotica. All Rights Reserved.
+
 /*
  * Vrr Hit Flash: an emissive flash that fades out after a hit.
  *
