@@ -72,20 +72,21 @@ def set_engine_version(uplugin, version):
 
 
 def check(out, version):
-    z = zipfile.ZipFile(out)
-    names = [n for n in z.namelist() if not n.endswith('/')]
-    uplugin = z.read('MaterialLibrary/MaterialLibrary.uplugin').decode()
-    problems = []
-    if '"EngineVersion": "%s.0"' % version not in uplugin:
-        problems.append('EngineVersion is not %s.0' % version)
-    problems += ['bad path: ' + n for n in names if '\\' in n or '/Binaries/' in n or '/Intermediate/' in n]
-    problems += ['Epic Starter Content (replace it with your own): ' + n for n in names if '/StarterContent/' in n]
-    problems += ['no copyright line: ' + n for n in names
-                 if n.endswith(('.cpp', '.h', '.cs', '.py'))
-                 and not z.read(n).startswith((b'// Copyright', b'# Copyright'))]
+    with zipfile.ZipFile(out) as z:
+        names = [n for n in z.namelist() if not n.endswith('/')]
+        uplugin = z.read('MaterialLibrary/MaterialLibrary.uplugin').decode()
+        problems = []
+        if '"EngineVersion": "%s.0"' % version not in uplugin:
+            problems.append('EngineVersion is not %s.0' % version)
+        problems += ['bad path: ' + n for n in names if '\\' in n or '/Binaries/' in n or '/Intermediate/' in n]
+        problems += ['Epic Starter Content (replace it with your own): ' + n for n in names if '/StarterContent/' in n]
+        problems += ['no copyright line: ' + n for n in names
+                     if n.endswith(('.cpp', '.h', '.cs', '.py'))
+                     and not z.read(n).startswith((b'// Copyright', b'# Copyright'))]
     print('%d files from %s' % (len(names), git('log', '-1', '--format=%h %s').decode().strip()))
     if problems:
-        sys.exit('\n'.join(['error:'] + problems))
+        os.remove(out)	# never leave a zip that failed the checks where it could be uploaded
+        sys.exit('\n'.join(['error: %s not written' % os.path.basename(out)] + problems))
 
 
 def desktop():
