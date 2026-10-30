@@ -31,6 +31,8 @@ HLSL everywhere and shows clear errors when an input is missing.
 | Vrr Stepped Time | Time that advances in held steps, for animation "on twos" or "on threes". |
 | Vrr UV Region | Picks one material region out of a packed "UV Layouts" channel (atlas or UDIM). |
 
+<img width="630" height="600" alt="AnimeToonShader_Test01" src="https://github.com/user-attachments/assets/4045c527-a4f6-49df-9925-96286a71e4ce" />
+
 ## Components and actors
 
 Add these to your actors, or place them in the level:
