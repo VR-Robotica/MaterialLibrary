@@ -22,7 +22,7 @@ class UTexture;
  * Feed Time In the same stepped boil clock as the outlines (MF_ToonLit does) so they move together.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrToonShadow : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrToonShadow : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

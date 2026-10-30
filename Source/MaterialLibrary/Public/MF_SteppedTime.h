@@ -16,7 +16,7 @@
  * Phase (0-1 of a step, e.g. Per Instance Random) lets objects change frame at different moments.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrSteppedTime : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrSteppedTime : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

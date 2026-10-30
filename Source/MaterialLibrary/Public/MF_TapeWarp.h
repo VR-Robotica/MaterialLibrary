@@ -18,7 +18,7 @@
  *  - Head switching: the bottom lines bend sideways, like the head-switch noise at the bottom of a VHS frame.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrTapeWarp : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrTapeWarp : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

@@ -14,7 +14,7 @@
  *   Emissive    = EdgeColor * EdgeIntensity * Edge
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrDissolve : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrDissolve : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

@@ -44,7 +44,7 @@ namespace VrrBlobShadow
 	constexpr float CubeSize = 100.0f;
 
 	/** Material used when none is assigned. */
-	constexpr const TCHAR* DefaultMaterialPath = TEXT("/VRR_Materials/Masters/Toon/M_Toon_BlobShadow.M_Toon_BlobShadow");
+	constexpr const TCHAR* DefaultMaterialPath = TEXT("/MaterialLibrary/Masters/Toon/M_Toon_BlobShadow.M_Toon_BlobShadow");
 
 	/** Foot bone names tried when none are set (bone names match case-insensitively). */
 	const TCHAR* const FootBoneNames[][2] =

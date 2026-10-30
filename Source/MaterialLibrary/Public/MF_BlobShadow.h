@@ -23,7 +23,7 @@
  * shadows (Vrr Toon Shadow's World Position In) and not darken ground that's already shaded.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrBlobShadow : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrBlobShadow : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

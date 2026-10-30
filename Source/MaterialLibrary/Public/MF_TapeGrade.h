@@ -17,7 +17,7 @@
  * Wear blends every effect from a clean signal (0) to the values set here (1). Above 1 pushes them further.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrTapeGrade : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrTapeGrade : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

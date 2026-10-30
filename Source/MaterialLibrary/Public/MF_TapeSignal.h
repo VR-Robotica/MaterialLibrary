@@ -18,7 +18,7 @@
  * Follow it with Vrr Tape Grade for the faded colors of a worn tape.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrTapeSignal : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrTapeSignal : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

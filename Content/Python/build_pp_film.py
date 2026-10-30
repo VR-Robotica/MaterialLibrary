@@ -1,5 +1,5 @@
 """
-Builds /VRR_Materials/PostProcess/M_PP_Film (post process, after tonemapping) and MI_PP_Film from the VRR nodes:
+Builds /MaterialLibrary/PostProcess/M_PP_Film (post process, after tonemapping) and MI_PP_Film from the VRR nodes:
 
     UV       = UseVideoTape ? Vrr Tape Warp.UV : ViewportUV           (shared by every node that reads the scene)
     Picture  = Vrr Film Lens(UV, Channel Shift = Lens - ChannelShift + (UseVideoTape ? Vrr Tape Warp.Color Split : 0))
@@ -18,7 +18,7 @@ and MI_PP_Film keeps its overrides as long as the parameter names stay the same.
 """
 import unreal
 
-FOLDER = "/VRR_Materials/PostProcess"
+FOLDER = "/MaterialLibrary/PostProcess"
 MATERIAL_NAME = "M_PP_Film"
 INSTANCE_NAME = "MI_PP_Film"
 # Comic Shade dot style: HIGHLIGHTS (light dots on bright areas), PRINT (classic print ink dots, bigger the darker)

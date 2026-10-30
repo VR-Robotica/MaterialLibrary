@@ -14,7 +14,7 @@
 namespace VrrToonLighting
 {
 	/** The collection every toon material reads its light, shadow map and boil clock from. */
-	inline const TCHAR* const CollectionPath = TEXT("/VRR_Materials/Masters/Toon/MPC_ToonLighting.MPC_ToonLighting");
+	inline const TCHAR* const CollectionPath = TEXT("/MaterialLibrary/Masters/Toon/MPC_ToonLighting.MPC_ToonLighting");
 
 	// MPC_ToonLighting parameters
 

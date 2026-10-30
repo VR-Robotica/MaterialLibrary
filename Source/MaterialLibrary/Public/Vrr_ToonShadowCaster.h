@@ -18,7 +18,7 @@ class UTextureRenderTarget2D;
  * Without a caster in the level, toon materials are simply unshadowed.
  */
 UCLASS(meta = (DisplayName = "Vrr Toon Shadow Caster"))
-class VRR_MATERIALS_API AVrr_ToonShadowCaster : public AActor
+class MATERIALLIBRARY_API AVrr_ToonShadowCaster : public AActor
 {
 	GENERATED_BODY()
 

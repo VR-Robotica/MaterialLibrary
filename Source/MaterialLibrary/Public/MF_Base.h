@@ -40,7 +40,7 @@ struct FVrrOutput
  * materials: they store the node's own class and its properties by name.
  */
 UCLASS(Abstract, collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrBase : public UMaterialExpression
+class MATERIALLIBRARY_API UMaterialExpressionVrrBase : public UMaterialExpression
 {
 	GENERATED_BODY()
 

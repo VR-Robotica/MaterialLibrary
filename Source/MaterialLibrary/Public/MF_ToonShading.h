@@ -26,7 +26,7 @@
  * which feeds this node from MPC_ToonLighting.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrToonShading : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrToonShading : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

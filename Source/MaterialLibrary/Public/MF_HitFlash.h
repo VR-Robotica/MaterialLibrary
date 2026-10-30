@@ -12,7 +12,7 @@
  *   Emissive = Color * Intensity * Alpha
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrHitFlash : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrHitFlash : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

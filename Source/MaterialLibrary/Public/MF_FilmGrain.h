@@ -15,7 +15,7 @@
  * Connect Frame (e.g. Vrr Stepped Time's Frame) to drive the steps yourself; otherwise it steps at Frame Rate.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrFilmGrain : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrFilmGrain : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

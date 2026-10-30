@@ -26,7 +26,7 @@
  * The row and column math must stay in step with MakeRegions and MakeUDIMTiles in VRR_EditorTools' Core_UVLayout.cpp.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrUVRegion : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrUVRegion : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

@@ -16,7 +16,7 @@
  * Output: the filtered scene color. Chain Vrr Halation (added) and Vrr Film Grain after it.
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrFilmLens : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrFilmLens : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

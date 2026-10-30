@@ -15,7 +15,7 @@
  * color and the halo surrounds it. Add the Glow output to the scene color (e.g. Vrr Film Lens + Glow).
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrHalation : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrHalation : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

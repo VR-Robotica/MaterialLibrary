@@ -29,7 +29,7 @@ class USkinnedMeshComponent;
 
 /** Project Settings > Plugins > VRR Toon Boil. */
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "VRR Toon Boil"))
-class VRR_MATERIALS_API UVrr_ToonBoilSettings : public UDeveloperSettings
+class MATERIALLIBRARY_API UVrr_ToonBoilSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
 
@@ -94,7 +94,7 @@ enum class EVrrToonBoilAnimation : uint8
 
 /** Runs the camera boil clock and writes it to MPC_ToonLighting.BoilTime. Created automatically in every world. */
 UCLASS()
-class VRR_MATERIALS_API UVrr_ToonBoilSubsystem : public UTickableWorldSubsystem
+class MATERIALLIBRARY_API UVrr_ToonBoilSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 
@@ -130,7 +130,7 @@ private:
  * only while the camera moves. Only runs in game; in the editor materials use the camera clock.
  */
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent, DisplayName = "Vrr Toon Boil"))
-class VRR_MATERIALS_API UVrr_ToonBoilComponent : public UActorComponent
+class MATERIALLIBRARY_API UVrr_ToonBoilComponent : public UActorComponent
 {
 	GENERATED_BODY()
 

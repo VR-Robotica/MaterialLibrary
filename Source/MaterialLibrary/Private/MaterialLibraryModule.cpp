@@ -1,5 +1,5 @@
 /*
- * VRR_Materials runtime module.
+ * MaterialLibrary runtime module.
  *
  * Holds the VRR material nodes (MF_*: UMaterialExpressionVrr*, all built on UMaterialExpressionVrrBase and the
  * VrrMaterialMath helpers) and the C++ that feeds them:
@@ -12,4 +12,4 @@
 
 #include "Modules/ModuleManager.h"
 
-IMPLEMENT_MODULE(FDefaultModuleImpl, VRR_Materials)
+IMPLEMENT_MODULE(FDefaultModuleImpl, MaterialLibrary)

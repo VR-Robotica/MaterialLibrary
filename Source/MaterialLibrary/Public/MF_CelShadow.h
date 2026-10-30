@@ -16,7 +16,7 @@
  *   Color  = lerp(Scene Color, Shadow Color, Mask * Opacity)
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrCelShadow : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrCelShadow : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

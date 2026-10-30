@@ -50,7 +50,7 @@ enum class EVrrHalftoneStyle : uint8
  * World space rebuilds the surface normal from depth (Unlit toon materials don't write usable G-buffer normals).
  */
 UCLASS(collapsecategories, hidecategories=Object)
-class VRR_MATERIALS_API UMaterialExpressionVrrComicShade : public UMaterialExpressionVrrBase
+class MATERIALLIBRARY_API UMaterialExpressionVrrComicShade : public UMaterialExpressionVrrBase
 {
 	GENERATED_BODY()
 

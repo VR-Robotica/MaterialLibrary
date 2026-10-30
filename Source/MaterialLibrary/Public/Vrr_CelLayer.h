@@ -23,7 +23,7 @@ namespace VrrCelLayer
  * post process. Needs Project Settings > Rendering > Custom Depth-Stencil Pass = "Enabled with Stencil".
  */
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent, DisplayName = "Vrr Cel Layer"))
-class VRR_MATERIALS_API UVrr_CelLayerComponent : public UActorComponent
+class MATERIALLIBRARY_API UVrr_CelLayerComponent : public UActorComponent
 {
 	GENERATED_BODY()
 

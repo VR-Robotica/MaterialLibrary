@@ -20,7 +20,7 @@
  *   The owner's meshes render Custom Depth (optional) so the material leaves them out of their own shadow.
  */
 UCLASS(ClassGroup = (Rendering), meta = (BlueprintSpawnableComponent, DisplayName = "Vrr Blob Shadow"))
-class VRR_MATERIALS_API UVrr_BlobShadowComponent : public UStaticMeshComponent
+class MATERIALLIBRARY_API UVrr_BlobShadowComponent : public UStaticMeshComponent
 {
 	GENERATED_BODY()
 
