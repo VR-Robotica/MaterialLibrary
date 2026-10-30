@@ -13,7 +13,7 @@ python Scripts/fab_zip.py 5.8 D:/Builds/MaterialLibrary_5.8.zip
 With no version it makes a zip for every version in `VERSIONS` at the top of the script (only 5.8: the content is saved in 5.8, so older engines can't open it); add a
 version there once the content is resaved in it and the plugin builds and loads on it. Each zip is written to the desktop as
 `MaterialLibrary_<version>.zip` unless a path is given (one version only), and holds one
-`MaterialLibrary/` folder with the uplugin, README, Config, Content, Resources and Source (no Binaries, Intermediate,
+`MaterialLibrary/` folder with the uplugin, README, LICENSE, Config, Content, Resources and Source (no Binaries, Intermediate,
 `Content/Python/` or `Scripts/`), the uplugin's `EngineVersion` set to `<version>.0`. The script stops with an error if a path uses
 backslashes, build output got in, a source file is missing its copyright line, or
 Epic Starter Content (`StarterContent/`) is still in the content. Submit one zip per engine version.

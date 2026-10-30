@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Vrr Film Grain: soft, clumpy film grain for a Post Process material.

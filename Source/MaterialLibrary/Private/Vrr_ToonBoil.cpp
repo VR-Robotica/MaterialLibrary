@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Toon boil clock: time for the toon noise that only runs while the camera or an object moves.

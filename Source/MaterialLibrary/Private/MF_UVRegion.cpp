@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Vrr UV Region: picks one material region out of a TechArt Toolbox "UV Layouts" channel, or tells which region a UV is in.

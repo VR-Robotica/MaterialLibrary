@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Vrr Film Lens: lens imperfections for a Post Process material (chromatic aberration, channel shift, softness).

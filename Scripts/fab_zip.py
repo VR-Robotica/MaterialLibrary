@@ -1,4 +1,4 @@
-# Copyright VR Robotica. All Rights Reserved.
+# Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 """
 Fab upload zips of the plugin's last commit, one per engine version.
@@ -6,7 +6,7 @@ Fab upload zips of the plugin's last commit, one per engine version.
     python Scripts/fab_zip.py                         -> a zip for every version in VERSIONS, on the desktop
         python Scripts/fab_zip.py 5.8 out.zip             -> one version to a chosen path
 
-Zips the committed uplugin, README, Config, Content, Resources and Source (not the working copy, and never Binaries,
+Zips the committed uplugin, README, LICENSE, Config, Content, Resources and Source (not the working copy, and never Binaries,
 Intermediate, Content/Python or this folder) into one MaterialLibrary/ folder with forward-slash paths, sets the uplugin's
 EngineVersion to <engine version>.0 and checks the result. Commit before zipping: uncommitted edits are left out.
 """
@@ -16,7 +16,7 @@ import sys
 import zipfile
 
 PLUGIN = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))	# the folder above Scripts/
-SHIPPED = ['MaterialLibrary.uplugin', 'README.md', 'Config', 'Content', 'Resources', 'Source']
+SHIPPED = ['MaterialLibrary.uplugin', 'README.md', 'LICENSE', 'Config', 'Content', 'Resources', 'Source']
 LEFT_OUT = ['Content/Python/']	# maintainer scripts that built some of the content
 VERSIONS = ['5.8']	# the content is saved in 5.8, so older engines can't open it
 

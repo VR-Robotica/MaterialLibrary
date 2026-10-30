@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Vrr Cel Layer component: tags its owner's meshes for the cel shadow post process.

@@ -4,6 +4,8 @@ Stylized material nodes and ready-to-use masters for Unreal Engine 5.8: toon sha
 cel and blob shadows, comic print and film / video tape post processing, dissolve and hit flash, vertex animation
 texture (VAT) materials and a set of PBR material functions.
 
+Free to use under the MIT License (see [LICENSE](LICENSE)).
+
 Supported engine: **5.8** (the content is saved in 5.8 and can't be opened in older versions). Platforms: Windows,
 macOS, Linux. Requires the engine plugins **AnimToTexture** (VAT functions) and **BaseMaterial** (M_Generic); both
 ship with the engine and are enabled with this plugin.

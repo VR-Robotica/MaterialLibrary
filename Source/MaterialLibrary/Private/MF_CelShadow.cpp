@@ -1,4 +1,4 @@
-// Copyright VR Robotica. All Rights Reserved.
+// Copyright (c) 2026 VR Robotica. Licensed under the MIT License (see LICENSE).
 
 /*
  * Vrr Cel Shadow: a flat drop shadow behind cel layer meshes, like an animation cel lying a little above the
